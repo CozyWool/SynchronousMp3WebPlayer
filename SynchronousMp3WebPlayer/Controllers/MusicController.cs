@@ -7,7 +7,7 @@ using Yandex.Music.Client;
 
 namespace SynchronousMp3WebPlayer.Controllers;
 
-[Route("home")]
+[Route("music")]
 public class MusicController : Controller
 {
     private readonly ILogger<MusicController> _logger;
@@ -43,7 +43,7 @@ public class MusicController : Controller
         return View(model);
     }
 
-    [HttpGet("download")]
+    [HttpPost("download")]
     public IActionResult Download(string token)
     {
         var client = new YandexMusicClient();
@@ -76,16 +76,5 @@ public class MusicController : Controller
         }
 
         return Ok();
-    }
-
-    public IActionResult Privacy()
-    {
-        return View();
-    }
-
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View(new ErrorViewModel {RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier});
     }
 }
