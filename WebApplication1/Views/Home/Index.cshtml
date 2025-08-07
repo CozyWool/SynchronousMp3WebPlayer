@@ -1,0 +1,258 @@
+﻿@model IndexViewModel
+<style>
+    .song-container {
+        height: 75vh;
+        margin: auto 10px;
+        width: 50vw;
+        overflow-y: scroll;
+        overflow-x: hidden;
+    }
+</style>
+
+<audio controls id="myAudio" hidden>
+    <source id="audioSource">
+</audio>
+<div class="d-flex flex-row justify-content-between">
+    <img id="songCover" src="/img/no-cover_200x200.jpg" style="height: 200px; width: 200px" alt="Нет обложки"/>
+    <div class="d-flex flex-column">
+            <span class="fw-bold fs-3 text-center"><span id="songName">не выбрана</span> -
+                <span
+                    id="songAuthor">не выбран</span></span>
+        <span class="mt-auto fw-bold fs-5 text-center"><span id="songCurrentTime">не выбран</span> из
+                <span
+                    id="songDuration">не выбран</span></span>
+    </div>
+    <div class="d-flex flex-column">
+        <button id="playButton" class="btn btn-outline-primary mt-auto">Воспроизвести</button>
+        <button id="pauseButton" class="btn btn-outline-primary">Пауза</button>
+        <button id="muteButton" class="btn btn-outline-primary mb-auto">Выключить звук</button>
+    </div>
+</div>
+<div class="mt-2">
+    <label class="form-label" for="volumeSlider">Громкость: <span id="volumeValueSpan"></span></label>
+    <input class="form-range" type="range" id="volumeSlider" name="volume" min="0" max="1" step="0.01" value="0.5"/>
+</div>
+<button id="reconnectButton" class="btn btn-outline-primary">Переподключиться</button>
+
+<div class="d-flex flex-row">
+    <div class="song-container">
+        <h3>Плейлист Влада</h3>
+        @foreach (var yTrack in Model.TracksVlad)
+        {
+            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
+            var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            string validAuthorName;
+            if (yTrack.Artists.FirstOrDefault() is null)
+            {
+                validAuthorName = "Unknown";
+            }
+            else
+            {
+                validAuthorName = string.Concat(yTrack.Artists.First().Name
+                                                      .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            <div class="mb-2 d-flex flex-row">
+                @if (yTrack.CoverUri is not null)
+                {
+                    <img src="@("https://" + yTrack.CoverUri[..^2] + "100x100")" alt="Обложка"/>
+                }
+                else
+                {
+                    <img src="/img/no-cover_100x100.jpg" alt="Нет обложки"/>
+                }
+                <button class="btn btn-dark changeSongBtn w-100" style="height: 100px"
+                        data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
+                        data-title="@yTrack.Title"
+                        data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
+                        data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "200x200" : "/img/no-cover_200x200.jpg")">
+                    <span class="text-truncate fs-3 text-center fw-bold" style="width: 20vw">@yTrack.Title</span>
+                    <br/>
+                    <span class="text-truncate fs-5 text-center"
+                          style="width: 20vw">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
+                </button>
+            </div>
+        }
+    </div>
+    <div class="song-container">
+        <h3>Плейлист Эльвира</h3>
+        @foreach (var yTrack in Model.TracksElvir)
+        {
+            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
+            var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            string validAuthorName;
+            if (yTrack.Artists.FirstOrDefault() is null)
+            {
+                validAuthorName = "Unknown";
+            }
+            else
+            {
+                validAuthorName = string.Concat(yTrack.Artists.First().Name
+                                                      .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            <div class="mb-2 d-flex flex-row">
+                @if (yTrack.CoverUri is not null)
+                {
+                    <img src="@("https://" + yTrack.CoverUri[..^2] + "100x100")" alt="Обложка"/>
+                }
+                else
+                {
+                    <img src="/img/no-cover_100x100.jpg" alt="Нет обложки"/>
+                }
+                <button class="btn btn-dark changeSongBtn w-100" style="height: 100px"
+                        data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
+                        data-title="@yTrack.Title"
+                        data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
+                        data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "200x200" : "/img/no-cover.jpg")">
+                    <span class="text-truncate fs-3 text-center fw-bold" style="width: 20vw">@yTrack.Title</span>
+                    <br/>
+                    <span class="text-truncate fs-5 text-center"
+                          style="width: 20vw">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts
+{
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/musicHub")
+            .build();
+        let audio = document.querySelector("#myAudio");
+        let audioSource = document.querySelector("#audioSource");
+        let playButton = document.querySelector("#playButton");
+        let pauseButton = document.querySelector("#pauseButton");
+        let muteButton = document.querySelector("#muteButton");
+        let reconnectButton = document.querySelector("#reconnectButton");
+        let songCurrentTimeSpan = document.querySelector("#songCurrentTime");
+        let songDurationSpan = document.querySelector("#songDuration");
+        let songTitleSpan = document.querySelector("#songName");
+        let songAuthorSpan = document.querySelector("#songAuthor");
+        let songCoverImg = document.querySelector("#songCover");
+        let volumeSlider = document.querySelector("#volumeSlider");
+        let volumeValueSpan = document.querySelector("#volumeValueSpan");
+        let siteTitle = document.querySelector("#siteTitle");
+        connection.start().then(function () {
+            console.log("Connected!");
+            alert("Вы подключились к группе, нажмите куда-нибудь, чтобы у вас заработал плеер")
+        }).catch(function (err) {
+            console.error(err)
+        });
+
+        playButton.onclick = function () {
+            playSong(audio.currentTime);
+            connection.invoke("PlaySong", audio.currentTime);
+        }
+        pauseButton.onclick = function () {
+            pauseSong();
+            connection.invoke("PauseSong");
+        }
+        muteButton.onclick = function () {
+            if (audio.muted) {
+                audio.muted = false;
+                changeVolume(audio.volume);
+                muteButton.innerHTML = "Выключить звук";
+            } else {
+                audio.muted = true;
+                changeVolume(audio.volume);
+                muteButton.innerHTML = "Включить звук";
+            }
+        }
+        reconnectButton.onclick = function () {
+            let result = confirm('Точно переподключиться?');
+            if (!result) {
+                return;
+            }
+            if (connection.state === "Connected") {
+                console.log("Stop connection...");
+                connection.stop().then(function () {
+                    connection.start().then(function () {
+                        alert("Вы подключились к группе, нажмите куда-нибудь, чтобы у вас заработал плеер")
+                    }).catch(function (err) {
+                        console.error(err)
+                    });
+                });
+            } else if (connection.state === "Disconnected") {
+                console.log("Start connection...");
+                connection.start().then(function () {
+                    alert("Вы подключились к группе, нажмите куда-нибудь, чтобы у вас заработал плеер")
+                }).catch(function (err) {
+                    console.error(err)
+                });
+            }
+        }
+
+        connection.on("ChangeSong", function (song) {
+            audioSource.src = song.fileName;
+            songTitleSpan.innerHTML = song.title;
+            songAuthorSpan.innerHTML = song.author;
+            songCoverImg.src = song.coverUri;
+            siteTitle.innerHTML = "OTT Плеер | " + song.title;
+            audio.load();
+            playSong(0);
+        });
+        $(document).on("click", ".changeSongBtn", function () {
+            let fileName = $(this).attr("data-fileName");
+            let title = $(this).attr("data-title");
+            let author = $(this).attr("data-author");
+            let coverUri = $(this).attr("data-coverUri");
+            let song = {
+                FileName: fileName,
+                Title: title,
+                Author: author,
+                CoverUri: coverUri
+            };
+            connection.invoke("ChangeSong", song);
+        });
+
+        connection.on("PauseSong", pauseSong);
+
+        function pauseSong() {
+            audio.pause();
+        }
+
+        connection.on("PlaySong", playSong);
+
+        function playSong(time) {
+            audio.currentTime = time;
+            audio.play();
+        }
+
+        // audio.onended = function () {
+        //     connection.invoke("ChangeSong", "/music/vlad/1-800_artist_bbno$.mp3");
+        // }
+        audio.onpause = function () {
+            pauseSong();
+            connection.invoke("PauseSong");
+        }
+        audio.onplay = function () {
+            connection.invoke("PlaySong", audio.currentTime);
+        }
+        audio.ontimeupdate = function () {
+            let minutes = Math.floor(audio.currentTime / 60);
+            let seconds = Math.floor(audio.currentTime % 60);
+            songCurrentTimeSpan.innerHTML = `${minutes < 10 ? "0" + minutes : minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+        }
+        audio.ondurationchange = function () {
+            let minutes = Math.floor(audio.duration / 60);
+            let seconds = Math.floor(audio.duration % 60);
+            songDurationSpan.innerHTML = `${minutes < 10 ? "0" + minutes : minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => changeVolume(volumeSlider.value));
+        volumeSlider.oninput = () => changeVolume(volumeSlider.value)
+
+        function changeVolume(volume) {
+            audio.volume = volume;
+            if (audio.muted) {
+                volumeValueSpan.innerHTML = `${Math.floor(volume * 100)}% (заглушено)`;
+            } else {
+                volumeValueSpan.innerHTML = `${Math.floor(volume * 100)}%`;
+            }
+        }
+
+    </script>
+}
