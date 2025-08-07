@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SynchronousMp3WebPlayer.Models;
 using Yandex.Music.Api;
 using Yandex.Music.Api.Common;
+using Yandex.Music.Api.Models.Track;
 using Yandex.Music.Client;
 
 namespace SynchronousMp3WebPlayer.Controllers;
@@ -10,17 +11,13 @@ namespace SynchronousMp3WebPlayer.Controllers;
 [Route("music")]
 public class MusicController : Controller
 {
-    private readonly ILogger<MusicController> _logger;
-    private readonly IConfiguration _configuration;
-    private readonly string tokenVlad;
-    private readonly string tokenElvir;
+    private readonly string _tokenVlad;
+    private readonly string _tokenElvir;
 
-    public MusicController(ILogger<MusicController> logger, IConfiguration configuration)
+    public MusicController(IConfiguration configuration)
     {
-        _logger = logger;
-        _configuration = configuration;
-        tokenVlad = _configuration.GetValue<string>("tokenVlad") ?? throw new NullReferenceException();
-        tokenElvir = _configuration.GetValue<string>("tokenElvir") ?? throw new NullReferenceException();
+        _tokenVlad = configuration.GetValue<string>("tokenVlad") ?? throw new NullReferenceException();
+        _tokenElvir = configuration.GetValue<string>("tokenElvir") ?? throw new NullReferenceException();
     }
 
     [HttpGet("index")]
@@ -28,15 +25,18 @@ public class MusicController : Controller
     public IActionResult Index()
     {
         var clientVlad = new YandexMusicClient();
-        clientVlad.Authorize(tokenVlad);
+        clientVlad.Authorize(_tokenVlad);
         var tracksVlad = clientVlad.GetLikedTracks();
         var clientElvir = new YandexMusicClient();
-        clientElvir.Authorize(tokenElvir);
+        clientElvir.Authorize(_tokenElvir);
         var tracksElvir = clientElvir.GetLikedTracks();
         var model = new IndexViewModel
         {
-           TracksVlad = tracksVlad,
-           TracksElvir = tracksElvir
+           Tracks = new List<(List<YTrack>, string)>
+                    {
+                        (tracksVlad, "Влада"),
+                        (tracksElvir, "Эльвира"),
+                    }
         };
         
         ViewData["Title"] = "OTT Плеер";
