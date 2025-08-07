@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 
-namespace WebApplication1.Hubs;
+namespace SynchronousMp3WebPlayer.Hubs;
 
 public class Song
 {

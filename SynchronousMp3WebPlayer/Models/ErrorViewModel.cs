@@ -1,4 +1,4 @@
-namespace WebApplication1.Models;
+namespace SynchronousMp3WebPlayer.Models;
 
 public class ErrorViewModel
 {

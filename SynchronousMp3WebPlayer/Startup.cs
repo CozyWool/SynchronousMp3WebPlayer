@@ -1,8 +1,8 @@
 
 
-using WebApplication1.Hubs;
+using SynchronousMp3WebPlayer.Hubs;
 
-namespace WebApplication1;
+namespace SynchronousMp3WebPlayer;
 
 public class Startup
 {
@@ -32,7 +32,7 @@ public class Startup
         app.UseEndpoints(endpoints =>
                          {
                              endpoints.MapControllerRoute("default",
-                                                          "{controller=Home}/{action=Index}");
+                                                          "{controller=Music}/{action=Index}");
                              endpoints.MapHub<MusicHub>("/musicHub");
                          });
     }

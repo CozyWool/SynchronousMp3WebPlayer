@@ -1,6 +1,6 @@
 ﻿using Yandex.Music.Api.Models.Track;
 
-namespace WebApplication1.Models;
+namespace SynchronousMp3WebPlayer.Models;
 
 public class IndexViewModel
 {

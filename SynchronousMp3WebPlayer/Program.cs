@@ -1,4 +1,4 @@
-using WebApplication1;
+using SynchronousMp3WebPlayer;
 
 CreateHostBuilder(args).Build().Run();
 return;

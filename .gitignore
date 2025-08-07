@@ -279,5 +279,5 @@ Thumbs.db
 *.rar
 *.zip
 *.7z
-music/
-appsettings.json
+*.mp3
+appsettings.Development.json

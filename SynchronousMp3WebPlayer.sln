@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1", "WebApplication1\WebApplication1.csproj", "{0D09E370-9572-46A4-9C90-B6E834E95E15}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynchronousMp3WebPlayer", "SynchronousMp3WebPlayer\SynchronousMp3WebPlayer.csproj", "{0D09E370-9572-46A4-9C90-B6E834E95E15}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

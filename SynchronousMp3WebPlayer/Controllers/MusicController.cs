@@ -1,23 +1,21 @@
 ﻿using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using WebApplication1.Models;
+using SynchronousMp3WebPlayer.Models;
 using Yandex.Music.Api;
 using Yandex.Music.Api.Common;
-using Yandex.Music.Api.Common.Debug;
-using Yandex.Music.Api.Models.Account;
 using Yandex.Music.Client;
 
-namespace WebApplication1.Controllers;
+namespace SynchronousMp3WebPlayer.Controllers;
 
 [Route("home")]
-public class HomeController : Controller
+public class MusicController : Controller
 {
-    private readonly ILogger<HomeController> _logger;
+    private readonly ILogger<MusicController> _logger;
     private readonly IConfiguration _configuration;
     private readonly string tokenVlad;
     private readonly string tokenElvir;
 
-    public HomeController(ILogger<HomeController> logger, IConfiguration configuration)
+    public MusicController(ILogger<MusicController> logger, IConfiguration configuration)
     {
         _logger = logger;
         _configuration = configuration;
