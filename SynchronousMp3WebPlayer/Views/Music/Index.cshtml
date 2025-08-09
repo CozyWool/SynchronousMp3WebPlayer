@@ -1,44 +1,40 @@
 ﻿@model IndexViewModel
+
 <style>
-    .song-container {
-        height: 75vh;
-        margin: auto 10px;
-        width: 50vw;
-        overflow-y: scroll;
-        overflow-x: hidden;
+    :root {
+        --player-width: calc(50vw - 200px - 50px - 0.5rem - 0.5rem - 0.5rem - 0.5rem);
     }
 </style>
-
 <audio controls id="myAudio" hidden>
     <source id="audioSource">
 </audio>
-<div id="playerDiv" class="d-none d-flex flex-row mb-2" style="height: 200px;">
+<div id="playerDiv" class="d-none d-flex flex-row" style="height: 200px;">
     <div id="songDiv" class="d-flex flex-row" style="width: 50vw; height: 200px; overflow: hidden">
-        <img id="songCover" class="ms-2" src="/img/no-cover_200x200.jpg" style="height: 200px; width: 200px;"
+        <img id="songCover" class="ms-2 me-2" src="/img/no-cover_200x200.jpg" style="height: 200px; width: 200px;"
              alt="Нет обложки"/>
-        <div class="d-flex flex-column" style="width: calc(50vw - 200px - 50px - 0.5rem)">
+        <div class="d-flex flex-column white-border" style="width: var(--player-width);">
             <span id="songName"
                   class="fs-3 text-truncate fw-bold text-center" style="width: 90%; margin:0 auto">не выбрана</span>
             <br/>
             <span id="songAuthor"
                   class="fs-5 text-center">не выбран</span>
             <div class="d-flex flex-row ms-auto me-auto">
-                <button id="backwardStepButton" class="btn btn-outline-primary me-2" style="width: 50px">
+                <button id="backwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
                     <i class="fa-solid fa-backward-step"></i>
                 </button>
-                <button id="backwardButton" class="btn btn-outline-primary me-2" style="width: 50px">
+                <button id="backwardButton" class="btn btn-outline-light me-2" style="width: 50px">
                     <i class="fa-solid fa-backward"></i>
                 </button>
-                <button id="playButton" class="btn btn-outline-primary me-2" style="width: 50px">
+                <button id="playButton" class="btn btn-outline-light me-2" style="width: 50px">
                     <i class="fa-solid fa-play"></i>
                 </button>
-                <button id="pauseButton" class="btn btn-outline-primary me-2" style="width: 50px; display: none">
+                <button id="pauseButton" class="btn btn-outline-light me-2" style="width: 50px; display: none">
                     <i class="fa-solid fa-pause"></i>
                 </button>
-                <button id="forwardButton" class="btn btn-outline-primary me-2" style="width: 50px">
+                <button id="forwardButton" class="btn btn-outline-light me-2" style="width: 50px">
                     <i class="fa-solid fa-forward"></i>
                 </button>
-                <button id="forwardStepButton" class="btn btn-outline-primary me-2" style="width: 50px">
+                <button id="forwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
                     <i class="fa-solid fa-forward-step"></i>
                 </button>
             </div>
@@ -46,42 +42,38 @@
                 <span
                     id="songDuration">не выбран</span></span>
         </div>
-        <div class="d-flex flex-column" style="width: 50px;">
-            <label class="form-label text-center" for="volumeSlider">
+        <div class="d-flex flex-column ms-2 me-2" style="width: 50px;">
+            <label class="form-label text-center white-border" for="volumeSlider">
                 <span id="volumeValueSpan"></span>
             </label>
-            <input class="form-range"
+            <input class="volume-slider"
                    type="range"
                    id="volumeSlider"
                    name="volume"
-                   min="0" max="1" step="0.01" value="0.15"
-                   style="height: 200px;
-                   width: 15px;
-                   margin: 0 auto;
-                   writing-mode: vertical-lr;
-                   direction: rtl"/>
-            <button id="muteButton" class="btn btn-outline-primary me-2" style="width: 50px">
+                   min="0" max="1" step="0.01" value="0.15"/>
+            <button id="muteButton" class="btn btn-outline-light mt-2" style="width: 50px">
                 <i class="fa-solid fa-volume-high"></i>
             </button>
         </div>
     </div>
-    <div class="d-flex flex-column">
-        <div class="d-flex flex-row mb-2">
-            <h5 class="text-center">Очередь</h5>
-            <button id="clearQueueBtn" class="btn btn-outline-primary ms-auto me-2" style="width: 50px">
+    <div class="d-flex flex-column white-border me-2" style="padding: 10px; width: 50vw">
+        <div class="d-flex flex-row mb-2 white-border">
+            <h5 class="text-center m-auto">Очередь</h5>
+            <button id="clearQueueBtn" class="btn btn-outline-light me-2 mb-2 mt-2" style="width: 50px">
                 <i class="fa-solid fa-trash"></i>
             </button>
         </div>
         <div id="queueDiv" class="d-flex flex-column"
-             style="overflow-y: scroll; overflow-x: hidden; height: 200px;width: 50vw">
+             style="overflow-y: scroll; overflow-x: hidden; height: 200px;">
 
         </div>
     </div>
 </div>
-<div class="d-flex flex-row">
-    <button id="reconnectButton" class="btn btn-outline-primary">Переподключиться</button>
-    <div id="serviceInfo" class="m-auto text-center d-flex flex-column"
-         style="overflow-x: hidden; overflow-y: scroll; height: 38px; ">
+<div class="d-flex flex-row m-2">
+    <button id="reconnectButton" class="btn btn-outline-light me-2" style="min-width: 200px;">
+        Переподключиться <i class="fa-solid fa-rotate-right"></i>
+    </button>
+    <div class="mt-auto mb-auto text-center d-flex flex-column service-info" style="width: 100%;">
 
     </div>
 </div>
@@ -90,7 +82,7 @@
 <div class="d-flex flex-row">
     @foreach (var (tracks, name) in Model.Tracks)
     {
-        <div class="d-flex flex-column">
+        <div class="d-flex flex-column ms-auto me-auto white-border" style="width: calc(50vw - 0.5rem - 0.5rem);">
             <h3 class="text-center">Плейлист @name</h3>
             <div class="song-container">
                 @foreach (var yTrack in tracks)
@@ -129,7 +121,7 @@
                             <span class="text-truncate fs-6 text-center"
                                   style="width: 20vw">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
                         </button>
-                        <button class="ms-2 btn btn-primary addToQueueBtn" style="height: 100px;width:100px"
+                        <button class="ms-2 btn btn-outline-light addToQueueBtn" style="height: 100px;width:100px"
                                 data-id="@yTrack.Id"
                                 data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
                                 data-title="@yTrack.Title"
@@ -170,7 +162,7 @@
         let volumeSlider = document.querySelector("#volumeSlider");
         let volumeValueSpan = document.querySelector("#volumeValueSpan");
         let siteTitle = document.querySelector("#siteTitle");
-        let serviceInfoDiv = $("#serviceInfo");
+        let serviceInfoDiv = $(".service-info");
         let currentSongIndex = 0;
         let queueCount = 0;
         let isHost = false;
@@ -191,7 +183,7 @@
         try {
             connect().then(() => {
                 console.log("Connected!");
-                sendServiceInfo("Вы подключились к группе, нажмите куда-нибудь, чтобы у вас заработал плеер", "green");
+                sendServiceInfo("Вы подключились к группе, нажмите куда-нибудь, чтобы у вас заработал плеер", "lightgreen");
             });
 
         } catch (err) {
@@ -230,9 +222,9 @@
             }
             try {
                 await connection.stop()
-                sendServiceInfo("Переподключение...", "gray");
+                sendServiceInfo("Переподключение...", "lightgray");
                 await connect();
-                sendServiceInfo("Вы переподключились к группе", "green");
+                sendServiceInfo("Вы переподключились к группе", "lightgreen");
             } catch (err) {
                 console.error(err);
                 sendServiceInfo("Произошла ошибка при переподключении", "red");
@@ -266,14 +258,14 @@
             siteTitle.innerHTML = "OTT Плеер | " + song.title;
 
             let newActiveSong = $("#song_" + song.queueIndex + " .queueSongBtn");
-            newActiveSong.addClass("btn-primary");
+            newActiveSong.addClass("btn-light");
             newActiveSong.removeClass("btn-dark");
 
             if (currentSongIndex != song.queueIndex) {
                 console.log(currentSongIndex, song.queueIndex);
                 let oldActiveSong = $("#song_" + currentSongIndex + " .queueSongBtn");
                 oldActiveSong.addClass("btn-dark");
-                oldActiveSong.removeClass("btn-primary");
+                oldActiveSong.removeClass("btn-light");
             }
 
 
@@ -400,16 +392,21 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => changeVolume(volumeSlider.value));
-        volumeSlider.oninput = () => changeVolume(volumeSlider.value)
+        volumeSlider.oninput = () => {
+            changeVolume(volumeSlider.value);
+
+        }
 
         function changeVolume(volume) {
+            const volumePercent = `${Math.floor(volume * 100)}%`;
+            volumeSlider.style.setProperty('--volume-value', volumePercent);
             audio.volume = volume;
-            volumeValueSpan.innerHTML = `${Math.floor(volume * 100)}%`;
+            volumeValueSpan.innerHTML = volumePercent;
         }
 
         connection.on("BecomeHost", () => {
             isHost = true;
-            sendServiceInfo("Вы стали хостом, это ничего не дает, но это круто!", "green");
+            sendServiceInfo("Вы стали хостом, это ничего не дает, но это круто!", "lightgreen");
         })
 
     </script>

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Newtonsoft.Json;
 using Yandex.Music.Api;
 using Yandex.Music.Api.Common;
 using Yandex.Music.Client;
@@ -25,16 +26,21 @@ public class MusicHub : Hub
 {
     private static Song? CurrentSong { get; set; }
     private static int CurrentSongIndex { get; set; }
-    private static List<Song> SongQueue { get; } = new();
+    private static List<Song> SongQueue { get; set; } = new();
     private static List<User> Users { get; } = new();
     private static bool IsHostGranted { get; set; }
     private readonly string _tokenVlad;
     private readonly string _tokenElvir;
-
+    private static bool _loadedQueueFromFile;
     public MusicHub(IConfiguration configuration)
     {
         _tokenVlad = configuration.GetValue<string>("tokenVlad") ?? throw new NullReferenceException();
         _tokenElvir = configuration.GetValue<string>("tokenElvir") ?? throw new NullReferenceException();
+        if (File.Exists("wwwroot/queue.json") && !_loadedQueueFromFile)
+        {
+            SongQueue = JsonConvert.DeserializeObject<List<Song>>(File.ReadAllText("wwwroot/queue.json")) ?? new List<Song>();
+            _loadedQueueFromFile = true;
+        }
     }
 
     public async Task JoinGroup()

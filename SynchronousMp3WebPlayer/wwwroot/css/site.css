@@ -9,12 +9,53 @@ html {
 }
 
 .btn, img {
+    border: 1px solid #f8f9fa;
     border-radius: .75rem;
 }
 
+::-webkit-scrollbar {
+    display: none;
+}
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.volume-slider {
+    border: 1px solid #ffffff;
+    background: none;
+    padding: 5px 0;
+    border-radius: .75rem;
+    width: 50px;
+    height: calc(200px - 64px - .5rem - .5rem);
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0 auto;
+    writing-mode: vertical-lr;
+    direction: rtl;
+}
+
+::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: .75rem;
+    height: 100%;
+    width: 10px;
+    background: linear-gradient(to top, #ccc 0%, #ccc var(--volume-value), dimgray var(--volume-value), dimgray 100%);
+    outline: none;
+    transition: background 0.3s ease;
+}
+
+::-webkit-slider-runnable-track:hover {
+    background: linear-gradient(to top, #ffcc33 0%, #ffcc33 var(--volume-value), dimgray var(--volume-value), dimgray 100%);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    --display-slider: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    margin-left: -2.5px;
+    background-color: #ffffff;
+    border-radius: .75rem;
+    cursor: pointer;
 }
 
 html {
@@ -22,6 +63,73 @@ html {
     min-height: 100%;
 }
 
-body {
-    margin-bottom: 60px;
+body.dark-theme {
+    background-color: #121212;
+    color: #ffffff;
+}
+
+.bg-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -101;
+    pointer-events: none;
+    background: #050a1a;
+}
+
+.bg-grid::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -100;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+            0deg,
+            rgba(0, 255, 0, 0.1) 0px,
+            rgba(0, 255, 0, 0.1) 1px,
+            transparent 1px,
+            transparent 20px
+    ),
+    repeating-linear-gradient(
+            90deg,
+            rgba(0, 255, 0, 0.1) 0px,
+            rgba(0, 255, 0, 0.1) 1px,
+            transparent 1px,
+            transparent 20px
+    );
+    animation: grid-move 2s linear infinite;
+}
+
+@keyframes grid-move {
+    0% {
+        background-position: 0 0, 0 0;
+    }
+    100% {
+        background-position: 40px 40px, 40px 40px;
+    }
+}
+
+.service-info {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    height: 38px;
+    padding: 5px 0;
+    border: 1px solid #ffffff;
+    border-radius: .75rem;
+}
+
+.white-border {
+    border: 1px solid #ffffff;
+    border-radius: .75rem;
+}
+
+.song-container {
+    height: 75vh;
+    margin: auto 10px;
+    overflow-y: scroll;
+    overflow-x: hidden;
 }
