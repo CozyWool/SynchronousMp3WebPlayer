@@ -12,7 +12,7 @@
 <audio controls id="myAudio" hidden>
     <source id="audioSource">
 </audio>
-<div class="d-flex flex-row mb-2" style="height: 200px;">
+<div id="playerDiv" class="d-none d-flex flex-row mb-2" style="height: 200px;">
     <div id="songDiv" class="d-flex flex-row" style="width: 50vw; height: 200px; overflow: hidden">
         <img id="songCover" class="ms-2" src="/img/no-cover_200x200.jpg" style="height: 200px; width: 200px;"
              alt="Нет обложки"/>
@@ -66,7 +66,12 @@
         </div>
     </div>
     <div class="d-flex flex-column">
-        <h5 class="text-center">Очередь</h5>
+        <div class="d-flex flex-row mb-2">
+            <h5 class="text-center">Очередь</h5>
+            <button id="clearQueueBtn" class="btn btn-outline-primary ms-auto me-2" style="width: 50px">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>
         <div id="queueDiv" class="d-flex flex-column"
              style="overflow-y: scroll; overflow-x: hidden; height: 200px;width: 50vw">
 
@@ -75,8 +80,10 @@
 </div>
 <div class="d-flex flex-row">
     <button id="reconnectButton" class="btn btn-outline-primary">Переподключиться</button>
-    <span id="serviceInfo" class="m-auto text-center">
-    </span>
+    <div id="serviceInfo" class="m-auto text-center d-flex flex-column"
+         style="overflow-x: hidden; overflow-y: scroll; height: 38px; ">
+
+    </div>
 </div>
 
 
@@ -111,6 +118,7 @@
                             <img src="/img/no-cover_100x100.jpg" alt="Нет обложки"/>
                         }
                         <button class="ms-2 btn btn-dark changeSongBtn" style="height: 100px; width: 25vw"
+                                data-id="@yTrack.Id"
                                 data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
                                 data-title="@yTrack.Title"
                                 data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
@@ -122,6 +130,7 @@
                                   style="width: 20vw">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
                         </button>
                         <button class="ms-2 btn btn-primary addToQueueBtn" style="height: 100px;width:100px"
+                                data-id="@yTrack.Id"
                                 data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
                                 data-title="@yTrack.Title"
                                 data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
@@ -161,14 +170,17 @@
         let volumeSlider = document.querySelector("#volumeSlider");
         let volumeValueSpan = document.querySelector("#volumeValueSpan");
         let siteTitle = document.querySelector("#siteTitle");
-        let serviceInfoSpan = document.querySelector("#serviceInfo");
+        let serviceInfoDiv = $("#serviceInfo");
         let currentSongIndex = 0;
         let queueCount = 0;
-        let justChangedSong = false;
+        let isHost = false;
 
         function sendServiceInfo(message, color) {
-            serviceInfoSpan.innerHTML = message;
-            serviceInfoSpan.style.color = color;
+            let span = document.createElement("span");
+            span.innerHTML = message;
+            span.style.color = color;
+            serviceInfoDiv.append(span);
+            serviceInfoDiv.scrollTop(serviceInfoDiv[0].scrollHeight);
         }
 
         async function connect() {
@@ -187,6 +199,7 @@
         }
         connection.onclose(err => {
             console.error(err);
+            isHost = false;
             sendServiceInfo("Потеряно соединение с сервером, обновите страницу или переподключитесь", "red");
         });
 
@@ -245,7 +258,7 @@
         }
 
         connection.on("ChangeSong", function (song) {
-            justChangedSong = true;
+            $("#playerDiv").removeClass("d-none");
             audioSource.src = song.fileName;
             songTitleSpan.innerHTML = song.title;
             songAuthorSpan.innerHTML = song.author;
@@ -257,6 +270,7 @@
             newActiveSong.removeClass("btn-dark");
 
             if (currentSongIndex != song.queueIndex) {
+                console.log(currentSongIndex, song.queueIndex);
                 let oldActiveSong = $("#song_" + currentSongIndex + " .queueSongBtn");
                 oldActiveSong.addClass("btn-dark");
                 oldActiveSong.removeClass("btn-primary");
@@ -268,11 +282,13 @@
             playSong(0);
         });
         $(document).on("click", ".changeSongBtn", function () {
+            let id = $(this).attr("data-id");
             let fileName = $(this).attr("data-fileName");
             let title = $(this).attr("data-title");
             let author = $(this).attr("data-author");
             let coverUri = $(this).attr("data-coverUri");
             let song = {
+                Id: id,
                 FileName: fileName,
                 Title: title,
                 Author: author,
@@ -310,11 +326,13 @@
             queueCount++;
         });
         $(document).on("click", ".addToQueueBtn", function () {
+            let id = $(this).attr("data-id");
             let fileName = $(this).attr("data-fileName");
             let title = $(this).attr("data-title");
             let author = $(this).attr("data-author");
             let coverUri = $(this).attr("data-coverUri");
             let song = {
+                Id: id,
                 FileName: fileName,
                 Title: title,
                 Author: author,
@@ -322,6 +340,14 @@
                 QueueIndex: queueCount
             };
             connection.invoke("AddToQueue", song);
+        });
+
+        connection.on("ClearQueue", function () {
+            queueDiv.innerHTML = ``;
+            queueCount = 0;
+        });
+        $("#clearQueueBtn").click(() => {
+            connection.invoke("ClearQueue");
         });
 
         connection.on("PauseSong", pauseSong);
@@ -341,26 +367,28 @@
             audio.play();
         }
 
-        // audio.onended = function () {
-        //     connection.invoke("NextSong");
-        // }
-        audio.onpause = function () {
+        audio.onended = function () {
+            if (isHost) {
+                console.log("NextSong cuz ended");
+                connection.invoke("NextSong");
+            }
+        }
+        audio.onpause = function (e) {
+            e.preventDefault();
+            if (audio.duration - audio.currentTime < 0.1) {
+                return;
+            }
             pauseSong();
             connection.invoke("PauseSong");
         }
         audio.onplay = function () {
-            
             connection.invoke("PlaySong", audio.currentTime);
         }
         audio.ontimeupdate = function () {
-            if (justChangedSong) {
-                justChangedSong = false;
-                return;
-            }
-            if (audio.currentTime >= audio.duration - 0.1) {
-                connection.invoke("NextSong");
-                return;
-            }
+            // if (audio.currentTime >= audio.duration - 0.1) {
+            //     connection.invoke("NextSong");
+            //     return;
+            // }
             let minutes = Math.floor(audio.currentTime / 60);
             let seconds = Math.floor(audio.currentTime % 60);
             songCurrentTimeSpan.innerHTML = `${minutes < 10 ? "0" + minutes : minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
@@ -378,6 +406,11 @@
             audio.volume = volume;
             volumeValueSpan.innerHTML = `${Math.floor(volume * 100)}%`;
         }
+
+        connection.on("BecomeHost", () => {
+            isHost = true;
+            sendServiceInfo("Вы стали хостом, это ничего не дает, но это круто!", "green");
+        })
 
     </script>
 }
