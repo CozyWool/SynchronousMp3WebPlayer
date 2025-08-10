@@ -1,44 +1,28 @@
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
+using SynchronousMp3WebPlayer.Models;
 using Yandex.Music.Api;
 using Yandex.Music.Api.Common;
 using Yandex.Music.Client;
 
 namespace SynchronousMp3WebPlayer.Hubs;
 
-public class Song
-{
-    public string Id { get; set; }
-    public string Title { get; set; }
-    public string Author { get; set; }
-    public string FileName { get; set; }
-    public string CoverUri { get; set; }
-    public int QueueIndex { get; set; }
-}
-
-public class User
-{
-    public string ConnectionId { get; set; }
-    public bool IsHost { get; set; }
-}
-
 public class MusicHub : Hub
 {
-    private static Song? CurrentSong { get; set; }
+    private static SongModel? CurrentSong { get; set; }
     private static int CurrentSongIndex { get; set; }
-    private static List<Song> SongQueue { get; set; } = new();
-    private static List<User> Users { get; } = new();
+    private static List<SongModel> SongQueue { get; set; } = new();
+    private static List<UserModel> Users { get; } = new();
     private static bool IsHostGranted { get; set; }
-    private readonly string _tokenVlad;
-    private readonly string _tokenElvir;
+    private readonly string _yandexToken;
     private static bool _loadedQueueFromFile;
+
     public MusicHub(IConfiguration configuration)
     {
-        _tokenVlad = configuration.GetValue<string>("tokenVlad") ?? throw new NullReferenceException();
-        _tokenElvir = configuration.GetValue<string>("tokenElvir") ?? throw new NullReferenceException();
+        _yandexToken = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
         if (File.Exists("wwwroot/queue.json") && !_loadedQueueFromFile)
         {
-            SongQueue = JsonConvert.DeserializeObject<List<Song>>(File.ReadAllText("wwwroot/queue.json")) ?? new List<Song>();
+            SongQueue = JsonConvert.DeserializeObject<List<SongModel>>(File.ReadAllText("wwwroot/queue.json")) ?? [];
             _loadedQueueFromFile = true;
         }
     }
@@ -55,7 +39,7 @@ public class MusicHub : Hub
             await Clients.Caller.SendAsync("AddToQueue", song);
         }
 
-        var user = new User
+        var user = new UserModel
                    {
                        ConnectionId = Context.ConnectionId,
                    };
@@ -92,13 +76,9 @@ public class MusicHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task ChangeSong(Song song)
+    public async Task ChangeSong(SongModel song)
     {
-        if (!File.Exists("wwwroot/" + song.FileName))
-        {
-            Console.WriteLine($"{song.Title} не найдено, пытаюсь скачать с ЯМ");
-            await DownloadSong(song);
-        }
+        await CheckFile(song);
 
         CurrentSong = song;
         var songInQueue = SongQueue.FirstOrDefault(x => x.Id == CurrentSong.Id);
@@ -116,13 +96,22 @@ public class MusicHub : Hub
         await Clients.All.SendAsync("ChangeSong", song);
     }
 
-    private async Task DownloadSong(Song song)
+    private async Task CheckFile(SongModel song)
+    {
+        if (!File.Exists("wwwroot/" + song.FileName))
+        {
+            Console.WriteLine($"'{song.Title}' не найдено, пытаюсь скачать с ЯМ...");
+            await DownloadSong(song);
+        }
+    }
+
+    private async Task DownloadSong(SongModel song)
     {
         var client = new YandexMusicClient();
-        client.Authorize(_tokenVlad);
+        client.Authorize(_yandexToken);
         var api = new YandexMusicApi();
         var authStorage = new AuthStorage();
-        await api.User.AuthorizeAsync(authStorage, _tokenVlad);
+        await api.User.AuthorizeAsync(authStorage, _yandexToken);
 
         var yTrack = (await api.Track.GetAsync(authStorage, song.Id)).Result.First();
         var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
@@ -136,6 +125,11 @@ public class MusicHub : Hub
         {
             validAuthorName = string.Concat(yTrack.Artists.First().Name
                                                   .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        if (!Directory.Exists("wwwroot/music/"))
+        {
+            Directory.CreateDirectory("wwwroot/music/");
         }
 
         if (!File.Exists($"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3"))
@@ -155,11 +149,7 @@ public class MusicHub : Hub
         }
 
         var song = SongQueue[index];
-        if (!File.Exists("wwwroot/" + song.FileName))
-        {
-            Console.WriteLine($"{song.Title} не найдено, пытаюсь скачать с ЯМ");
-            await DownloadSong(song);
-        }
+        await CheckFile(song);
 
         CurrentSong = song;
         CurrentSongIndex = SongQueue.IndexOf(CurrentSong);
@@ -183,10 +173,6 @@ public class MusicHub : Hub
         }
 
         var song = SongQueue[CurrentSongIndex];
-        if (File.Exists("wwwroot/" + song.FileName))
-        {
-            Console.WriteLine($"{song.Title} exists");
-        }
 
         CurrentSong = song;
         await Clients.All.SendAsync("ChangeSong", song);
@@ -209,10 +195,6 @@ public class MusicHub : Hub
         }
 
         var song = SongQueue[CurrentSongIndex];
-        if (File.Exists("wwwroot/" + song.FileName))
-        {
-            Console.WriteLine($"{song.Title} exists");
-        }
 
         CurrentSong = song;
         await Clients.All.SendAsync("ChangeSong", song);
@@ -228,15 +210,16 @@ public class MusicHub : Hub
         await Clients.Others.SendAsync("PlaySong", time);
     }
 
-    public async Task AddToQueue(Song song)
+    public async Task AddToQueue(SongModel song)
     {
         SongQueue.Add(song);
+
+        await Clients.All.SendAsync("AddToQueue", song);
+        await CheckFile(song);
         if (SongQueue.Count == 1)
         {
             await ChangeSongByQueueIndex("0");
         }
-
-        await Clients.All.SendAsync("AddToQueue", song);
     }
 
     public async Task ClearQueue()

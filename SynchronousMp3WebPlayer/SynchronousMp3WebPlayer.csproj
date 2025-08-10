@@ -1,26 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <ApplicationIcon>wwwroot\img\favicon.ico</ApplicationIcon>
+        <EnvironmentName>Development</EnvironmentName>
+        <PublishSingleFile>True</PublishSingleFile>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="KM.Yandex.Music.Api" Version="2.0.3" />
-      <PackageReference Include="KM.Yandex.Music.Client" Version="2.0.3" />
-      <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
-      <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="7.0.0" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="7.0.0" />
+        <PackageReference Include="DotNetEnv" Version="3.1.1"/>
+        <PackageReference Include="KM.Yandex.Music.Api" Version="2.0.3"/>
+        <PackageReference Include="KM.Yandex.Music.Client" Version="2.0.3"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="wwwroot\music\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Content Remove="..\..\..\.nuget\packages\km.yandex.music.client\2.0.3\contentFiles\any\net7.0\README.md" />
-      <Content Remove="..\..\..\.nuget\packages\km.yandex.music.api\2.0.3\contentFiles\any\net7.0\README.md" />
+        <None Include=".env">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <Content Update="appsettings.Example.json">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>

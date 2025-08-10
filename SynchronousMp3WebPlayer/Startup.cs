@@ -1,5 +1,3 @@
-
-
 using SynchronousMp3WebPlayer.Hubs;
 
 namespace SynchronousMp3WebPlayer;
@@ -8,10 +6,7 @@ public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddSignalR(options =>
-                            {
-                                options.MaximumReceiveMessageSize = 1024 * 1024 * 20;
-                            });
+        services.AddSignalR(options => { options.MaximumReceiveMessageSize = 1024 * 1024 * 20; });
         services.AddHttpContextAccessor();
         services.AddMvc();
     }

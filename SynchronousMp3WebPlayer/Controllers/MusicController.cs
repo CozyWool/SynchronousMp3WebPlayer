@@ -1,21 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SynchronousMp3WebPlayer.Models;
-using Yandex.Music.Api.Models.Track;
 using Yandex.Music.Client;
 
 namespace SynchronousMp3WebPlayer.Controllers;
 
 [Route("music")]
-public class MusicController : Controller
+public class MusicController(IConfiguration configuration) : Controller
 {
-    private readonly string _tokenVlad;
-    private readonly string _tokenElvir;
-
-    public MusicController(IConfiguration configuration)
-    {
-        _tokenVlad = configuration.GetValue<string>("tokenVlad") ?? throw new NullReferenceException();
-        _tokenElvir = configuration.GetValue<string>("tokenElvir") ?? throw new NullReferenceException();
-    }
+    private readonly string _tokenVlad = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
+    private readonly string _tokenElvir = configuration.GetValue<string>("TOKEN_ELVIR") ?? throw new NullReferenceException();
 
     [HttpGet("index")]
     [Route("/")]
@@ -29,11 +22,11 @@ public class MusicController : Controller
         var tracksElvir = clientElvir.GetLikedTracks();
         var model = new IndexViewModel
         {
-           Tracks = new List<(List<YTrack>, string)>
-                    {
-                        (tracksVlad, "Влада"),
-                        (tracksElvir, "Эльвира"),
-                    }
+           Tracks =
+           [
+               (tracksVlad, "Влада"),
+               (tracksElvir, "Эльвира")
+           ]
         };
         
         ViewData["Title"] = "OTT Плеер";
