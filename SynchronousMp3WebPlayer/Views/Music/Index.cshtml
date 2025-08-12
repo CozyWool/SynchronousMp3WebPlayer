@@ -182,7 +182,6 @@
 
         try {
             connect().then(() => {
-                console.log("Connected!");
                 sendServiceInfo("Вы подключились к группе, нажмите куда-нибудь, чтобы у вас заработал плеер", "lightgreen");
             });
 
@@ -262,7 +261,6 @@
             newActiveSong.removeClass("btn-dark");
 
             if (currentSongIndex != song.queueIndex) {
-                console.log(currentSongIndex, song.queueIndex);
                 let oldActiveSong = $("#song_" + currentSongIndex + " .queueSongBtn");
                 oldActiveSong.addClass("btn-dark");
                 oldActiveSong.removeClass("btn-light");
@@ -280,17 +278,19 @@
             let author = $(this).attr("data-author");
             let coverUri = $(this).attr("data-coverUri");
             let song = {
-                Id: id,
-                FileName: fileName,
-                Title: title,
-                Author: author,
-                CoverUri: coverUri
+                id: id,
+                fileName: fileName,
+                title: title,
+                author: author,
+                coverUri: coverUri
             };
             connection.invoke("ChangeSong", song);
         });
 
-        connection.on("AddToQueue", function (song) {
+        connection.on("AddToQueue", addToQueue);
 
+        function addToQueue(song) {
+            queueCount++;
             let songElement = document.createElement("div");
             songElement.id = "song_" + song.queueIndex;
             songElement.classList.add("mb-2");
@@ -314,9 +314,8 @@
                 let queueIndex = queueSongBtn.getAttribute("data-queueIndex");
                 connection.invoke("ChangeSongByQueueIndex", queueIndex);
             });
+        }
 
-            queueCount++;
-        });
         $(document).on("click", ".addToQueueBtn", function () {
             let id = $(this).attr("data-id");
             let fileName = $(this).attr("data-fileName");
@@ -324,12 +323,12 @@
             let author = $(this).attr("data-author");
             let coverUri = $(this).attr("data-coverUri");
             let song = {
-                Id: id,
-                FileName: fileName,
-                Title: title,
-                Author: author,
-                CoverUri: coverUri,
-                QueueIndex: queueCount
+                id: id,
+                fileName: fileName,
+                title: title,
+                author: author,
+                coverUri: coverUri,
+                queueIndex: queueCount
             };
             connection.invoke("AddToQueue", song);
         });
@@ -361,7 +360,6 @@
 
         audio.onended = function () {
             if (isHost) {
-                console.log("NextSong cuz ended");
                 connection.invoke("NextSong");
             }
         }

@@ -212,6 +212,7 @@ public class MusicHub : Hub
 
     public async Task AddToQueue(SongModel song)
     {
+        song.QueueIndex = SongQueue.Count;
         SongQueue.Add(song);
 
         await Clients.All.SendAsync("AddToQueue", song);
