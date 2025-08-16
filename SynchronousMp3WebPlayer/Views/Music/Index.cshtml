@@ -73,9 +73,12 @@
     <button id="reconnectButton" class="btn btn-outline-light me-2" style="min-width: 200px;">
         Переподключиться <i class="fa-solid fa-rotate-right"></i>
     </button>
-    <div class="mt-auto mb-auto text-center d-flex flex-column service-info" style="width: 100%;">
+    <div class="mt-auto mb-auto text-center d-flex flex-column service-info me-2" style="width: 100%;">
 
     </div>
+    <button id="shuffleAllSongsButton" class="btn btn-outline-light" style="min-width: 200px;">
+        Все песни <i class="fa-solid fa-shuffle"></i>
+    </button>
 </div>
 
 
@@ -152,6 +155,7 @@
         let forwardStepButton = document.querySelector("#forwardStepButton");
         let forwardButton = document.querySelector("#forwardButton");
         let reconnectButton = document.querySelector("#reconnectButton");
+        let shuffleAllSongsButton = document.querySelector("#shuffleAllSongsButton");
         let songCurrentTimeSpan = document.querySelector("#songCurrentTime");
         let songDurationSpan = document.querySelector("#songDuration");
         let songTitleSpan = document.querySelector("#songName");
@@ -407,5 +411,8 @@
             sendServiceInfo("Вы стали хостом, это ничего не дает, но это круто!", "lightgreen");
         })
 
+        shuffleAllSongsButton.onclick = () => {
+            connection.invoke("ShuffleAllSongs");
+        }
     </script>
 }

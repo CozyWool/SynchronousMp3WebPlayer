@@ -11,8 +11,17 @@ catch (Exception ex)
 }
 finally
 {
-    FileManager.DeleteFilesInDirectory("wwwroot/music");
+    Console.Write("Удалить все файлы песен с диска? (y/n): ");
+    if (Console.ReadLine()?.ToLower() == "y")
+    {
+        FileManager.DeleteFilesInDirectory("wwwroot/music");
+    }
+    else
+    {
+        Console.WriteLine("Песни не удалены.");
+    }
 }
+
 return;
 
 static IHostBuilder CreateHostBuilder(string[] args)

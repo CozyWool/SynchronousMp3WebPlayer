@@ -14,12 +14,14 @@ public class MusicHub : Hub
     private static List<SongModel> SongQueue { get; set; } = new();
     private static List<UserModel> Users { get; } = new();
     private static bool IsHostGranted { get; set; }
-    private readonly string _yandexToken;
+    private readonly string _yandexTokenVlad;
+    private readonly string _yandexTokenElvir;
     private static bool _loadedQueueFromFile;
 
     public MusicHub(IConfiguration configuration)
     {
-        _yandexToken = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
+        _yandexTokenVlad = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
+        _yandexTokenElvir = configuration.GetValue<string>("TOKEN_ELVIR") ?? throw new NullReferenceException();
         if (File.Exists("wwwroot/queue.json") && !_loadedQueueFromFile)
         {
             SongQueue = JsonConvert.DeserializeObject<List<SongModel>>(File.ReadAllText("wwwroot/queue.json")) ?? [];
@@ -107,36 +109,67 @@ public class MusicHub : Hub
 
     private async Task DownloadSong(SongModel song)
     {
-        var client = new YandexMusicClient();
-        client.Authorize(_yandexToken);
-        var api = new YandexMusicApi();
-        var authStorage = new AuthStorage();
-        await api.User.AuthorizeAsync(authStorage, _yandexToken);
+        try
+        {
+            var apiVlad = new YandexMusicApi();
+            var apiElvir = new YandexMusicApi();
+            
+            var vladAuthStorage = new AuthStorage();
+            var elvirAuthStorage = new AuthStorage();
+            
+            await apiVlad.User.AuthorizeAsync(vladAuthStorage, _yandexTokenVlad);
+            await apiElvir.User.AuthorizeAsync(elvirAuthStorage, _yandexTokenElvir);
 
-        var yTrack = (await api.Track.GetAsync(authStorage, song.Id)).Result.First();
-        var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
-        var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-        string validAuthorName;
-        if (yTrack.Artists.FirstOrDefault() is null)
-        {
-            validAuthorName = "Unknown";
-        }
-        else
-        {
-            validAuthorName = string.Concat(yTrack.Artists.First().Name
-                                                  .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-        }
+            var isVladSong = true;
+            var isElvirSong = false;
+            var yTrack = (await apiVlad.Track.GetAsync(vladAuthStorage, song.Id)).Result.First();
+            if (yTrack.Error is not null)
+            {
+                isVladSong = false;
+                yTrack = (await apiElvir.Track.GetAsync(elvirAuthStorage, song.Id)).Result.First();
+                if (yTrack.Error is not null)
+                {
+                    Console.WriteLine($"ERROR: '{song.Title}' не получилось скачать с ЯМ.");
+                    return;
+                }
+            }
+            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
+            var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            string validAuthorName;
+            if (yTrack.Artists.FirstOrDefault() is null)
+            {
+                validAuthorName = "Unknown";
+            }
+            else
+            {
+                validAuthorName = string.Concat(yTrack.Artists.First().Name
+                                                      .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            }
 
-        if (!Directory.Exists("wwwroot/music/"))
-        {
-            Directory.CreateDirectory("wwwroot/music/");
-        }
+            if (!Directory.Exists("wwwroot/music/"))
+            {
+                Directory.CreateDirectory("wwwroot/music/");
+            }
 
-        if (!File.Exists($"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3"))
+            if (!File.Exists($"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3"))
+            {
+                if (isVladSong)
+                {
+                    await apiVlad.Track.ExtractToFileAsync(vladAuthStorage,
+                                                       yTrack,
+                                                       $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
+                }
+                else
+                {
+                    await apiElvir.Track.ExtractToFileAsync(elvirAuthStorage,
+                                                           yTrack,
+                                                           $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
+                }
+            }
+        }
+        catch (Exception ex)
         {
-            await api.Track.ExtractToFileAsync(authStorage,
-                                               yTrack,
-                                               $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
+            Console.WriteLine(ex);
         }
     }
 
@@ -228,5 +261,51 @@ public class MusicHub : Hub
         SongQueue.Clear();
         CurrentSongIndex = 0;
         await Clients.All.SendAsync("ClearQueue");
+    }
+
+    public async Task ShuffleAlLSongs()
+    {
+        await ClearQueue();
+
+        var clientVlad = new YandexMusicClient();
+        var clientElvir = new YandexMusicClient();
+        clientVlad.Authorize(_yandexTokenVlad);
+        clientElvir.Authorize(_yandexTokenElvir);
+
+        var random = new Random();
+        var tracks = clientVlad.GetLikedTracks()
+                               .Concat(clientElvir.GetLikedTracks())
+                               .DistinctBy(x => x.Id)
+                               .OrderBy(_ => random.Next())
+                               .ToList();
+        foreach (var yTrack in tracks)
+        {
+            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
+            var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            string validAuthorName;
+            if (yTrack.Artists.FirstOrDefault() is null)
+            {
+                validAuthorName = "Unknown";
+            }
+            else
+            {
+                validAuthorName = string.Concat(yTrack.Artists
+                                                      .First()
+                                                      .Name
+                                                      .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            var song = new SongModel
+                       {
+                           Id = yTrack.Id,
+                           FileName = $"/music/{validFileName}_artist_{validAuthorName}.mp3",
+                           Title = yTrack.Title,
+                           Author = yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен",
+                           CoverUri = yTrack.CoverUri is not null
+                                          ? "https://" + yTrack.CoverUri[..^2] + "200x200"
+                                          : "/img/no-cover_200x200.jpg"
+                       };
+            await AddToQueue(song);
+        }
     }
 }
