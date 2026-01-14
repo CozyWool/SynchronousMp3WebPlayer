@@ -2,87 +2,91 @@
 
 <style>
     :root {
-        --player-width: calc(50vw - 200px - 50px - 0.5rem - 0.5rem - 0.5rem - 0.5rem);
+        --player-width: calc(50vw - var(--song-div-height) - 50px - 0.5rem - 0.5rem - 0.5rem - 0.5rem);
+        --player-height: 32vh;
+        --song-div-height: calc(var(--player-height) - 50px);
     }
 </style>
 <audio controls id="myAudio" hidden>
     <source id="audioSource">
 </audio>
-<div id="playerDiv" class="d-none d-flex flex-row" style="height: 200px;">
-    <div id="songDiv" class="d-flex flex-row" style="width: 50vw; height: 200px; overflow: hidden">
-        <img id="songCover" class="ms-2 me-2" src="/img/no-cover_200x200.jpg" style="height: 200px; width: 200px;"
-             alt="Нет обложки"/>
-        <div class="d-flex flex-column white-border" style="width: var(--player-width);">
-            <span id="songName"
-                  class="fs-3 text-truncate fw-bold text-center" style="width: 90%; margin:0 auto">не выбрана</span>
-            <br/>
-            <span id="songAuthor"
-                  class="fs-5 text-center">не выбран</span>
-            <div class="d-flex flex-row ms-auto me-auto">
-                <button id="backwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
-                    <i class="fa-solid fa-backward-step"></i>
-                </button>
-                <button id="backwardButton" class="btn btn-outline-light me-2" style="width: 50px">
-                    <i class="fa-solid fa-backward"></i>
-                </button>
-                <button id="playButton" class="btn btn-outline-light me-2" style="width: 50px">
-                    <i class="fa-solid fa-play"></i>
-                </button>
-                <button id="pauseButton" class="btn btn-outline-light me-2" style="width: 50px; display: none">
-                    <i class="fa-solid fa-pause"></i>
-                </button>
-                <button id="forwardButton" class="btn btn-outline-light me-2" style="width: 50px">
-                    <i class="fa-solid fa-forward"></i>
-                </button>
-                <button id="forwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
-                    <i class="fa-solid fa-forward-step"></i>
+<div id="playerDiv" class="d-flex flex-row mt-2" style="height: calc(var(--player-height) + 1rem);">
+    <div class="d-flex flex-column">
+        <div id="songDiv" class="d-flex flex-row" style="width: 50vw; height: var(--song-div-height); overflow: hidden">
+            <img id="songCover" class="ms-2 me-2" src="/img/no-cover_200x200.jpg"
+                 style="height: var(--song-div-height); width: var(--song-div-height);"
+                 alt="Нет обложки"/>
+            <div class="d-flex flex-column white-border" style="width: var(--player-width);">
+                <span id="songName"
+                      class="fs-3 text-truncate fw-bold text-center mt-auto" style="width: 90%; margin:0 auto">не выбрана</span>
+                <span id="songAuthor"
+                      class="fs-5 text-truncate text-center">не выбран</span>
+                <div class="d-none d-flex flex-row ms-auto me-auto" id="playerControlsDiv">
+                    <button id="backwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
+                        <i class="fa-solid fa-backward-step"></i>
+                    </button>
+                    <button id="backwardButton" class="btn btn-outline-light me-2" style="width: 50px">
+                        <i class="fa-solid fa-backward"></i>
+                    </button>
+                    <button id="playButton" class="btn btn-outline-light me-2" style="width: 50px">
+                        <i class="fa-solid fa-play"></i>
+                    </button>
+                    <button id="pauseButton" class="btn btn-outline-light me-2" style="width: 50px; display: none">
+                        <i class="fa-solid fa-pause"></i>
+                    </button>
+                    <button id="forwardButton" class="btn btn-outline-light me-2" style="width: 50px">
+                        <i class="fa-solid fa-forward"></i>
+                    </button>
+                    <button id="forwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
+                        <i class="fa-solid fa-forward-step"></i>
+                    </button>
+                </div>
+                <span class="mt-auto fw-bold fs-5 text-center"><span id="songCurrentTime">00:00</span> из
+                    <span
+                        id="songDuration">00:00</span></span>
+            </div>
+            <div class="d-flex flex-column ms-2 me-2" style="width: 50px;">
+                <label class="form-label text-center white-border" for="volumeSlider">
+                    <span id="volumeValueSpan"></span>
+                </label>
+                <input class="volume-slider"
+                       type="range"
+                       id="volumeSlider"
+                       name="volume"
+                       min="0" max="1" step="0.01" value="0.15"/>
+                <button id="muteButton" class="btn btn-outline-light mt-2" style="width: 50px">
+                    <i class="fa-solid fa-volume-high"></i>
                 </button>
             </div>
-            <span class="mt-auto fw-bold fs-5 text-center"><span id="songCurrentTime">не выбран</span> из
-                <span
-                    id="songDuration">не выбран</span></span>
         </div>
-        <div class="d-flex flex-column ms-2 me-2" style="width: 50px;">
-            <label class="form-label text-center white-border" for="volumeSlider">
-                <span id="volumeValueSpan"></span>
-            </label>
-            <input class="volume-slider"
-                   type="range"
-                   id="volumeSlider"
-                   name="volume"
-                   min="0" max="1" step="0.01" value="0.15"/>
-            <button id="muteButton" class="btn btn-outline-light mt-2" style="width: 50px">
-                <i class="fa-solid fa-volume-high"></i>
+        <div class="d-flex flex-row m-2">
+            <button id="reconnectButton" class="btn btn-outline-light me-2" style="min-width: var(--song-div-height);">
+                Переподключиться <i class="fa-solid fa-rotate-right"></i>
             </button>
+            <div class="mt-auto mb-auto text-center d-flex flex-column service-info" style="width: 100%;">
+
+            </div>
         </div>
     </div>
-    <div class="d-flex flex-column white-border me-2" style="padding: 10px; width: 50vw">
-        <div class="d-flex flex-row mb-2 white-border">
+    <div class="d-flex flex-column white-border ms-2 me-2 mb-2"
+         style="padding: 10px; width: calc(50vw - 0.5rem - 0.5rem);">
+        <div class="d-flex flex-row mb-2">
+            <button id="shuffleAllSongsButton" class="btn btn-outline-light ms-2 mb-2 mt-2 m" style="min-width: 125px;">
+                Все песни <i class="fa-solid fa-shuffle"></i>
+            </button>
             <h5 class="text-center m-auto">Очередь</h5>
             <button id="clearQueueBtn" class="btn btn-outline-light me-2 mb-2 mt-2" style="width: 50px">
                 <i class="fa-solid fa-trash"></i>
             </button>
         </div>
         <div id="queueDiv" class="d-flex flex-column"
-             style="overflow-y: scroll; overflow-x: hidden; height: 200px;">
+             style="overflow-y: scroll; overflow-x: hidden; height: 100%;">
 
         </div>
     </div>
 </div>
-<div class="d-flex flex-row m-2">
-    <button id="reconnectButton" class="btn btn-outline-light me-2" style="min-width: 200px;">
-        Переподключиться <i class="fa-solid fa-rotate-right"></i>
-    </button>
-    <div class="mt-auto mb-auto text-center d-flex flex-column service-info me-2" style="width: 100%;">
 
-    </div>
-    <button id="shuffleAllSongsButton" class="btn btn-outline-light" style="min-width: 200px;">
-        Все песни <i class="fa-solid fa-shuffle"></i>
-    </button>
-</div>
-
-
-<div class="d-flex flex-row">
+<div class="d-flex flex-row mb-2" style="height: calc(100vh - var(--player-height) - 2rem);">
     @foreach (var (tracks, name) in Model.Tracks)
     {
         <div class="d-flex flex-column ms-auto me-auto white-border" style="width: calc(50vw - 0.5rem - 0.5rem);">
@@ -117,20 +121,28 @@
                                 data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
                                 data-title="@yTrack.Title"
                                 data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
-                                data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "200x200" : "/img/no-cover_200x200.jpg")">
-                            <span class="text-truncate fs-5 text-center fw-bold"
-                                  style="width: 20vw">@yTrack.Title</span>
-                            <br/>
-                            <span class="text-truncate fs-6 text-center"
-                                  style="width: 20vw">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
+                                data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
+                            <div class="d-flex flex-column">
+                                <span class="text-truncate fs-5 text-center fw-bold">@yTrack.Title</span>
+                                <span
+                                    class="text-truncate fs-6 text-center">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
+                            </div>
                         </button>
                         <button class="ms-2 btn btn-outline-light addToQueueBtn" style="height: 100px;width:100px"
                                 data-id="@yTrack.Id"
                                 data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
                                 data-title="@yTrack.Title"
                                 data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
-                                data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "200x200" : "/img/no-cover_200x200.jpg")">
+                                data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
                             <span class="text-truncate text-center"><i class="fa-solid fa-plus"></i></span>
+                        </button>
+                        <button class="ms-2 btn btn-outline-light addNextInQueueBtn" style="height: 100px;width:100px"
+                                data-id="@yTrack.Id"
+                                data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
+                                data-title="@yTrack.Title"
+                                data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
+                                data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
+                            <span class="text-truncate text-center"><i class="fa-solid fa-arrow-turn-up"></i></span>
                         </button>
                     </div>
                 }
@@ -253,7 +265,7 @@
         }
 
         connection.on("ChangeSong", function (song) {
-            $("#playerDiv").removeClass("d-none");
+            $("#playerControlsDiv").removeClass("d-none")
             audioSource.src = song.fileName;
             songTitleSpan.innerHTML = song.title;
             songAuthorSpan.innerHTML = song.author;
@@ -335,6 +347,66 @@
                 queueIndex: queueCount
             };
             connection.invoke("AddToQueue", song);
+        });
+
+        connection.on("AddNextInQueue", addNextInQueue);
+
+        function addNextInQueue(song) {
+            queueCount++;
+            let songElement = document.createElement("div");
+            songElement.id = "song_" + song.queueIndex;
+            songElement.classList.add("mb-2");
+            songElement.classList.add("d-flex");
+            songElement.classList.add("flex-row");
+            songElement.classList.add("justify-content-center");
+            songElement.innerHTML = `
+                    <img src="${song.coverUri}" alt="Обложка" style="height: 50px; width: 50px"/>
+
+                    <button class="ms-2 btn btn-dark queueSongBtn d-flex flex-row" style="height: 50px; width: calc(50vw - 50px - 0.5rem)"
+                            data-queueIndex="${song.queueIndex}">
+                        <span class="text-truncate fs-6 text-center fw-bold" style="width: 80%">${song.title}</span>
+                        <span class="text-truncate fs-6 text-center"
+                              style="width: 20%">${song.author}</span>
+                    </button>
+                </div>`;
+
+            let queueSongBtn = songElement.querySelector(".queueSongBtn");
+            queueSongBtn.addEventListener("click", function () {
+                let queueIndex = queueSongBtn.getAttribute("data-queueIndex");
+                connection.invoke("ChangeSongByQueueIndex", queueIndex);
+            });
+            let nextSongs = []
+            for (let i = currentSongIndex + 1; i < queueCount - 1; i++) {
+                let song = queueDiv.querySelector(`#song_${i}`);
+                nextSongs.push(song);
+            }
+            for (let i = 0; i < nextSongs.length; i++) {
+                let queueSong = nextSongs[i];
+                queueSong.id = `song_${i + currentSongIndex + 2}`;
+                queueSong.querySelector(`.queueSongBtn`).setAttribute("data-queueIndex", i + currentSongIndex + 2);
+            }
+            queueDiv.querySelector(`#song_${currentSongIndex}`).insertAdjacentElement('afterend', songElement);
+        }
+
+        $(document).on("click", ".addNextInQueueBtn", function () {
+            let id = $(this).attr("data-id");
+            let fileName = $(this).attr("data-fileName");
+            let title = $(this).attr("data-title");
+            let author = $(this).attr("data-author");
+            let coverUri = $(this).attr("data-coverUri");
+            let song = {
+                id: id,
+                fileName: fileName,
+                title: title,
+                author: author,
+                coverUri: coverUri,
+                queueIndex: currentSongIndex + 1
+            };
+            if (queueCount === 0) {
+                connection.invoke("AddToQueue", song);
+            } else {
+                connection.invoke("AddNextInQueue", song);
+            }
         });
 
         connection.on("ClearQueue", function () {

@@ -11,14 +11,17 @@ catch (Exception ex)
 }
 finally
 {
-    Console.Write("Удалить все файлы песен с диска? (y/n): ");
-    if (Console.ReadLine()?.ToLower() == "y")
+    if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != "Development")
     {
-        FileManager.DeleteFilesInDirectory("wwwroot/music");
-    }
-    else
-    {
-        Console.WriteLine("Песни не удалены.");
+        Console.Write("Удалить все файлы песен с диска? (y/n): ");
+        if (Console.ReadLine()?.ToLower() == "y")
+        {
+            FileManager.DeleteFilesInDirectory("wwwroot/music");
+        }
+        else
+        {
+            Console.WriteLine("Песни не удалены.");
+        }
     }
 }
 

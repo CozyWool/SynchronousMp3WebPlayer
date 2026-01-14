@@ -11,8 +11,8 @@ public class MusicHub : Hub
 {
     private static SongModel? CurrentSong { get; set; }
     private static int CurrentSongIndex { get; set; }
-    private static List<SongModel> SongQueue { get; set; } = new();
-    private static List<UserModel> Users { get; } = new();
+    private static List<SongModel> SongQueue { get; set; } = [];
+    private static List<UserModel> Users { get; } = [];
     private static bool IsHostGranted { get; set; }
     private readonly string _yandexTokenVlad;
     private readonly string _yandexTokenElvir;
@@ -255,6 +255,23 @@ public class MusicHub : Hub
             await ChangeSongByQueueIndex("0");
         }
     }
+    public async Task AddNextInQueue(SongModel song)
+    {
+        var newSongIndex = CurrentSongIndex + 1;
+        song.QueueIndex = newSongIndex;
+        for (var i = CurrentSongIndex + 1; i < SongQueue.Count; i++)
+        {
+            SongQueue[i].QueueIndex++;
+        }
+        SongQueue.Insert(newSongIndex, song);
+
+        await Clients.All.SendAsync("AddNextInQueue", song);
+        await CheckFile(song);
+        if (SongQueue.Count == 1)
+        {
+            await ChangeSongByQueueIndex("0");
+        }
+    }
 
     public async Task ClearQueue()
     {
@@ -302,7 +319,7 @@ public class MusicHub : Hub
                            Title = yTrack.Title,
                            Author = yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен",
                            CoverUri = yTrack.CoverUri is not null
-                                          ? "https://" + yTrack.CoverUri[..^2] + "200x200"
+                                          ? "https://" + yTrack.CoverUri[..^2] + "400x400"
                                           : "/img/no-cover_200x200.jpg"
                        };
             await AddToQueue(song);

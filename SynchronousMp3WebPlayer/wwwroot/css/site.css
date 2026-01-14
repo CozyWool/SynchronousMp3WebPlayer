@@ -13,6 +13,10 @@ html {
     border-radius: .75rem;
 }
 
+img {
+    object-fit: cover;
+}
+
 ::-webkit-scrollbar {
     display: none;
 }
@@ -23,7 +27,7 @@ html {
     padding: 5px 0;
     border-radius: .75rem;
     width: 50px;
-    height: calc(200px - 64px - .5rem - .5rem);
+    height: calc(var(--player-height) - 64px - .5rem - .5rem);
     -webkit-appearance: none;
     appearance: none;
     margin: 0 auto;
@@ -116,7 +120,7 @@ body.dark-theme {
 .service-info {
     overflow-x: hidden;
     overflow-y: scroll;
-    height: 38px;
+    height: 50px;
     padding: 5px 0;
     border: 1px solid #ffffff;
     border-radius: .75rem;
@@ -128,7 +132,7 @@ body.dark-theme {
 }
 
 .song-container {
-    height: 75vh;
+    height: 100%;
     margin: auto 10px;
     overflow-y: scroll;
     overflow-x: hidden;
