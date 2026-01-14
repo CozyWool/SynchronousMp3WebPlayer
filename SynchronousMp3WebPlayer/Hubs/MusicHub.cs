@@ -3,12 +3,14 @@ using Newtonsoft.Json;
 using SynchronousMp3WebPlayer.Models;
 using Yandex.Music.Api;
 using Yandex.Music.Api.Common;
+using Yandex.Music.Api.Extensions.API;
 using Yandex.Music.Client;
 
 namespace SynchronousMp3WebPlayer.Hubs;
 
 public class MusicHub : Hub
 {
+    private readonly ILogger _logger;
     private static SongModel? CurrentSong { get; set; }
     private static int CurrentSongIndex { get; set; }
     private static List<SongModel> SongQueue { get; set; } = [];
@@ -18,8 +20,9 @@ public class MusicHub : Hub
     private readonly string _yandexTokenElvir;
     private static bool _loadedQueueFromFile;
 
-    public MusicHub(IConfiguration configuration)
+    public MusicHub(IConfiguration configuration, ILogger<MusicHub> logger)
     {
+        _logger = logger;
         _yandexTokenVlad = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
         _yandexTokenElvir = configuration.GetValue<string>("TOKEN_ELVIR") ?? throw new NullReferenceException();
         if (File.Exists("wwwroot/queue.json") && !_loadedQueueFromFile)
@@ -27,6 +30,12 @@ public class MusicHub : Hub
             SongQueue = JsonConvert.DeserializeObject<List<SongModel>>(File.ReadAllText("wwwroot/queue.json")) ?? [];
             _loadedQueueFromFile = true;
         }
+    }
+
+    private void LogSong(string message, SongModel currentSong)
+    {
+        _logger.Log(LogLevel.Information, "[{ContextConnectionId}] {message}: {CurrentSongTitle} - {CurrentSongAuthor}",
+                    Context.ConnectionId, message, currentSong.Title, currentSong.Author);
     }
 
     public async Task JoinGroup()
@@ -95,6 +104,7 @@ public class MusicHub : Hub
         }
 
         CurrentSongIndex = CurrentSong.QueueIndex;
+        LogSong("Now playing", CurrentSong);
         await Clients.All.SendAsync("ChangeSong", song);
     }
 
@@ -102,7 +112,7 @@ public class MusicHub : Hub
     {
         if (!File.Exists("wwwroot/" + song.FileName))
         {
-            Console.WriteLine($"'{song.Title}' не найдено, пытаюсь скачать с ЯМ...");
+            _logger.LogInformation("'{SongTitle}' не найдено, пытаюсь скачать с ЯМ...", song.Title);
             await DownloadSong(song);
         }
     }
@@ -113,15 +123,14 @@ public class MusicHub : Hub
         {
             var apiVlad = new YandexMusicApi();
             var apiElvir = new YandexMusicApi();
-            
+
             var vladAuthStorage = new AuthStorage();
             var elvirAuthStorage = new AuthStorage();
-            
+
             await apiVlad.User.AuthorizeAsync(vladAuthStorage, _yandexTokenVlad);
             await apiElvir.User.AuthorizeAsync(elvirAuthStorage, _yandexTokenElvir);
 
             var isVladSong = true;
-            var isElvirSong = false;
             var yTrack = (await apiVlad.Track.GetAsync(vladAuthStorage, song.Id)).Result.First();
             if (yTrack.Error is not null)
             {
@@ -129,10 +138,11 @@ public class MusicHub : Hub
                 yTrack = (await apiElvir.Track.GetAsync(elvirAuthStorage, song.Id)).Result.First();
                 if (yTrack.Error is not null)
                 {
-                    Console.WriteLine($"ERROR: '{song.Title}' не получилось скачать с ЯМ.");
+                    _logger.LogError("'{SongTitle}' не получилось скачать с ЯМ.", song.Title);
                     return;
                 }
             }
+
             var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
             var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
             string validAuthorName;
@@ -156,14 +166,14 @@ public class MusicHub : Hub
                 if (isVladSong)
                 {
                     await apiVlad.Track.ExtractToFileAsync(vladAuthStorage,
-                                                       yTrack,
-                                                       $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
+                                                           yTrack,
+                                                           $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
                 }
                 else
                 {
                     await apiElvir.Track.ExtractToFileAsync(elvirAuthStorage,
-                                                           yTrack,
-                                                           $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
+                                                            yTrack,
+                                                            $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
                 }
             }
         }
@@ -186,6 +196,7 @@ public class MusicHub : Hub
 
         CurrentSong = song;
         CurrentSongIndex = SongQueue.IndexOf(CurrentSong);
+        LogSong("Now playing", CurrentSong);
         await Clients.All.SendAsync("ChangeSong", song);
     }
 
@@ -208,6 +219,7 @@ public class MusicHub : Hub
         var song = SongQueue[CurrentSongIndex];
 
         CurrentSong = song;
+        LogSong("Now playing", CurrentSong);
         await Clients.All.SendAsync("ChangeSong", song);
     }
 
@@ -230,6 +242,7 @@ public class MusicHub : Hub
         var song = SongQueue[CurrentSongIndex];
 
         CurrentSong = song;
+        LogSong("Now playing", CurrentSong);
         await Clients.All.SendAsync("ChangeSong", song);
     }
 
@@ -255,6 +268,7 @@ public class MusicHub : Hub
             await ChangeSongByQueueIndex("0");
         }
     }
+
     public async Task AddNextInQueue(SongModel song)
     {
         var newSongIndex = CurrentSongIndex + 1;
@@ -263,6 +277,7 @@ public class MusicHub : Hub
         {
             SongQueue[i].QueueIndex++;
         }
+
         SongQueue.Insert(newSongIndex, song);
 
         await Clients.All.SendAsync("AddNextInQueue", song);
