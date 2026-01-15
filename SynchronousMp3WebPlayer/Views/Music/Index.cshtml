@@ -14,14 +14,27 @@
     <div class="d-flex flex-column">
         <div id="songDiv" class="d-flex flex-row" style="width: 50vw; height: var(--song-div-height); overflow: hidden">
             <img id="songCover" class="ms-2 me-2" src="/img/no-cover_200x200.jpg"
-                 style="height: var(--song-div-height); width: var(--song-div-height);"
+                 style="height: var(--song-div-height); aspect-ratio: 1/1"
                  alt="Нет обложки"/>
-            <div class="d-flex flex-column white-border" style="width: var(--player-width);">
-                <span id="songName"
-                      class="fs-3 text-truncate fw-bold text-center mt-auto" style="width: 90%; margin:0 auto">не выбрана</span>
-                <span id="songAuthor"
-                      class="fs-5 text-truncate text-center">не выбран</span>
-                <div class="d-none d-flex flex-row ms-auto me-auto" id="playerControlsDiv">
+            <div class="d-flex flex-column white-border" style="width: var(--player-width); align-items: center;">
+                    <span id="songName"
+                          class="fs-3 fw-bold text-center mt-auto" style="width: 90%; margin:0 auto">
+                        не выбрана
+                    </span>
+                <div class="d-flex flex-row mb-2"
+                     style="align-self: center; justify-self: center; height: 50px; align-items: center;">
+                    <span id="songAuthor"
+                          class="fs-5 text-truncate text-center me-2">
+                        не выбран
+                    </span>
+                    <a class="btn btn-outline-light like-current-song-link"
+                       style="align-self: stretch"
+                       target="_blank"
+                       href="https://music.yandex.ru">
+                        <span class="text-truncate text-center m-auto"><i class="fa-solid fa-heart"></i></span>
+                    </a>
+                </div>
+                <div class="d-none d-flex flex-row ms-auto me-auto" id="playerControlsDiv" style="height: 50px">
                     <button id="backwardStepButton" class="btn btn-outline-light me-2" style="width: 50px">
                         <i class="fa-solid fa-backward-step"></i>
                     </button>
@@ -41,9 +54,16 @@
                         <i class="fa-solid fa-forward-step"></i>
                     </button>
                 </div>
-                <span class="mt-auto fw-bold fs-5 text-center"><span id="songCurrentTime">00:00</span> из
+                <span class="mt-auto fw-bold fs-5 text-center">
+                    <span id="songCurrentTime">
+                        00:00
+                    </span>
+                    из
                     <span
-                        id="songDuration">00:00</span></span>
+                        id="songDuration">
+                        00:00
+                    </span>
+                </span>
             </div>
             <div class="d-flex flex-column ms-2 me-2" style="width: 50px;">
                 <label class="form-label text-center white-border" for="volumeSlider">
@@ -144,7 +164,8 @@
                                 data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
                             <span class="text-truncate text-center"><i class="fa-solid fa-arrow-turn-up"></i></span>
                         </button>
-                        <a class="ms-2 btn btn-outline-light" style="height: 100px;width:100px; display: flex; justify-content: center; align-items: center"
+                        <a class="ms-2 btn btn-outline-light"
+                           style="height: 100px;width:100px; display: flex; justify-content: center; align-items: center"
                            target="_blank"
                            href="https://music.yandex.ru/track/@yTrack.Id">
                             <span class="text-truncate text-center m-auto"><i class="fa-solid fa-heart"></i></span>
@@ -177,6 +198,7 @@
         let songDurationSpan = document.querySelector("#songDuration");
         let songTitleSpan = document.querySelector("#songName");
         let songAuthorSpan = document.querySelector("#songAuthor");
+        let likeCurrentSongLink = document.querySelector(".like-current-song-link")
         let songCoverImg = document.querySelector("#songCover");
         let songDiv = document.querySelector("#songDiv");
         let queueDiv = document.querySelector("#queueDiv");
@@ -273,6 +295,7 @@
             $("#playerControlsDiv").removeClass("d-none")
             audioSource.src = song.fileName;
             songTitleSpan.innerHTML = song.title;
+            likeCurrentSongLink.href = `https://music.yandex.ru/track/${song.id}`;
             songAuthorSpan.innerHTML = song.author;
             songCoverImg.src = song.coverUri;
             siteTitle.innerHTML = "OTT Плеер | " + song.title;
