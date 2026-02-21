@@ -18,6 +18,7 @@ public class MusicHub : Hub
     private static bool IsHostGranted { get; set; }
     private readonly string _yandexTokenVlad;
     private readonly string _yandexTokenElvir;
+    private readonly string _yandexTokenMakar;
     private static bool _loadedQueueFromFile;
 
     public MusicHub(IConfiguration configuration, ILogger<MusicHub> logger)
@@ -25,6 +26,7 @@ public class MusicHub : Hub
         _logger = logger;
         _yandexTokenVlad = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
         _yandexTokenElvir = configuration.GetValue<string>("TOKEN_ELVIR") ?? throw new NullReferenceException();
+        _yandexTokenMakar = configuration.GetValue<string>("TOKEN_MAKAR") ?? throw new NullReferenceException();
         if (File.Exists("wwwroot/queue.json") && !_loadedQueueFromFile)
         {
             SongQueue = JsonConvert.DeserializeObject<List<SongModel>>(File.ReadAllText("wwwroot/queue.json")) ?? [];
@@ -123,14 +125,20 @@ public class MusicHub : Hub
         {
             var apiVlad = new YandexMusicApi();
             var apiElvir = new YandexMusicApi();
+            var apiMakar = new YandexMusicApi();
 
             var vladAuthStorage = new AuthStorage();
             var elvirAuthStorage = new AuthStorage();
+            var makarAuthStorage = new AuthStorage();
 
             await apiVlad.User.AuthorizeAsync(vladAuthStorage, _yandexTokenVlad);
             await apiElvir.User.AuthorizeAsync(elvirAuthStorage, _yandexTokenElvir);
+            await apiMakar.User.AuthorizeAsync(makarAuthStorage, _yandexTokenMakar);
+
 
             var isVladSong = true;
+            var isElvirSong = false;
+            var isMakarSong = false;
             var yTrack = (await apiVlad.Track.GetAsync(vladAuthStorage, song.Id)).Result.First();
             if (yTrack.Error is not null)
             {
@@ -138,8 +146,18 @@ public class MusicHub : Hub
                 yTrack = (await apiElvir.Track.GetAsync(elvirAuthStorage, song.Id)).Result.First();
                 if (yTrack.Error is not null)
                 {
-                    _logger.LogError("'{SongTitle}' не получилось скачать с ЯМ.", song.Title);
-                    return;
+                    yTrack = (await apiMakar.Track.GetAsync(makarAuthStorage, song.Id)).Result.First();
+                    if (yTrack.Error is not null)
+                    {
+                        _logger.LogError("'{SongTitle}' не получилось скачать с ЯМ.", song.Title);
+                        return;
+                    }
+
+                    isMakarSong = true;
+                }
+                else
+                {
+                    isElvirSong = true;
                 }
             }
 
@@ -169,9 +187,15 @@ public class MusicHub : Hub
                                                            yTrack,
                                                            $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
                 }
-                else
+                else if(isElvirSong)
                 {
                     await apiElvir.Track.ExtractToFileAsync(elvirAuthStorage,
+                                                            yTrack,
+                                                            $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
+                }
+                else if (isMakarSong)
+                {
+                    await apiElvir.Track.ExtractToFileAsync(makarAuthStorage,
                                                             yTrack,
                                                             $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
                 }

@@ -9,6 +9,7 @@ public class MusicController(IConfiguration configuration) : Controller
 {
     private readonly string _tokenVlad = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
     private readonly string _tokenElvir = configuration.GetValue<string>("TOKEN_ELVIR") ?? throw new NullReferenceException();
+    private readonly string _tokenMakar = configuration.GetValue<string>("TOKEN_MAKAR") ?? throw new NullReferenceException();
 
     [HttpGet("index")]
     [Route("/")]
@@ -17,15 +18,21 @@ public class MusicController(IConfiguration configuration) : Controller
         var clientVlad = new YandexMusicClient();
         clientVlad.Authorize(_tokenVlad);
         var tracksVlad = clientVlad.GetLikedTracks();
+
         var clientElvir = new YandexMusicClient();
         clientElvir.Authorize(_tokenElvir);
         var tracksElvir = clientElvir.GetLikedTracks();
+
+        var clientMakar = new YandexMusicClient();
+        clientMakar.Authorize(_tokenMakar);
+        var tracksMakar = clientMakar.GetLikedTracks();
         var model = new IndexViewModel
         {
            Tracks =
            [
                (tracksVlad, "Влада"),
-               (tracksElvir, "Эльвира")
+               (tracksElvir, "Эльвира"),
+               (tracksMakar, "Макара")
            ]
         };
         
