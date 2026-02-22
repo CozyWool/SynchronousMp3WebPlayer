@@ -131,11 +131,29 @@ body.dark-theme {
     border-radius: .75rem;
 }
 
+.tab-content {
+    display: flex;
+    flex-direction: column;
+
+    height: calc(100vh - var(--player-height) - 100px);
+}
+
+.tab-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tab-pane.active {
+    display: flex;
+}
+
 .song-container {
-    height: 100%;
-    margin: auto 10px;
-    overflow-y: scroll;
+    flex: 1;
+    overflow-y: auto;
     overflow-x: hidden;
+    margin: 0 10px;
 }
 
 .like-current-song-link {
@@ -144,4 +162,126 @@ body.dark-theme {
     display: flex;
     justify-content: center;
     align-items: center
+}
+
+.playlist-tabs-grid {
+    display: grid;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.playlist-tab {
+    height: 50px;
+    border: none;
+    border-radius: 12px;
+    padding: 0 15px;
+    background: #1e1e1e;
+    color: #bbb;
+    font-weight: 600;
+    font-size: 0.95rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    transition: all 0.25s ease;
+}
+
+.playlist-tab:hover {
+    background: #2a2a2a;
+    color: white;
+    transform: translateY(-3px);
+}
+
+.playlist-tab.active {
+    background: linear-gradient(135deg, #76c77a, #85dc89);
+    color: white;
+    box-shadow: 0 6px 16px rgba(87, 144, 90, 0.4);
+}
+
+.playlist-tab i {
+    font-size: 1.5rem;
+}
+
+.playlist-tab i,
+.playlist-tab span {
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 992px) {
+    .playlist-tabs-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .playlist-tabs-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+.song-item {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.song-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.song-item img {
+    width: 100px;
+    height: 100px;
+}
+
+.song-main-btn {
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.song-action-btn {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+
+    .song-item {
+        grid-template-columns: 70px 1fr;
+        grid-template-rows: auto auto;
+        gap: 8px;
+    }
+
+    .song-item img {
+        width: 70px;
+        height: 70px;
+        grid-row: span 2;
+    }
+
+    .song-main-btn {
+        height: auto;
+        padding: 8px;
+    }
+
+    .song-actions {
+        grid-column: 2;
+        display: flex;
+        gap: 8px;
+    }
+
+    .song-action-btn {
+        width: 45px;
+        height: 45px;
+    }
 }
