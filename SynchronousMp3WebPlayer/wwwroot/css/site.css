@@ -13,8 +13,10 @@ html {
     border-radius: .75rem;
 }
 
-img {
-    object-fit: cover;
+#songCover {
+    object-fit: contain;
+    height: 100%;
+    width: auto;
 }
 
 ::-webkit-scrollbar {
@@ -117,13 +119,31 @@ body.dark-theme {
     }
 }
 
+.player-bottom {
+    margin: 0.5rem 0.5rem 0 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reconnect-btn, .open-queue-btn {
+    height: 100%;
+}
+
 .service-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     overflow-x: hidden;
     overflow-y: scroll;
     height: 50px;
     padding: 5px 0;
     border: 1px solid #ffffff;
     border-radius: .75rem;
+}
+
+.service-info > span {
+    margin: 0 10px;
 }
 
 .white-border {
@@ -284,4 +304,87 @@ body.dark-theme {
         width: 45px;
         height: 45px;
     }
+}
+
+#playerDiv {
+    width: 100vw;
+}
+
+.queue-popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    z-index: 9999;
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.queue-popup.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.queue-popup-content {
+    background: #121212;
+    width: 100%;
+    height: 90vh;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(.25, .8, .25, 1);
+}
+
+.queue-popup.active .queue-popup-content {
+    transform: translateY(0);
+}
+
+.queue-handle {
+    width: 50px;
+    height: 5px;
+    background: #555;
+    border-radius: 10px;
+    margin: 0 auto 20px auto;
+}
+
+.queue-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.queue-header-title {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.queue-header-left {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.queue-header-right {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+#queueDiv {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
 }

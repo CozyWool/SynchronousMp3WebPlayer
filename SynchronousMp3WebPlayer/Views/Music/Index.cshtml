@@ -2,7 +2,8 @@
 
 <style>
     :root {
-        --player-width: calc(50vw - var(--song-div-height) - 50px - 0.5rem - 0.5rem - 0.5rem - 0.5rem);
+        @* --player-width: calc(50vw - var(--song-div-height) - 50px - 0.5rem - 0.5rem - 0.5rem - 0.5rem); *@
+        --player-width: 100%;
         --player-height: 32vh;
         --song-div-height: calc(var(--player-height) - 50px);
     }
@@ -10,17 +11,19 @@
 <audio controls id="myAudio" hidden>
     <source id="audioSource">
 </audio>
-<div id="playerDiv" class="d-flex flex-row mt-2" style="height: calc(var(--player-height) + 1rem);">
-    <div class="d-flex flex-column">
-        <div id="songDiv" class="d-flex flex-row" style="width: 50vw; height: var(--song-div-height); overflow: hidden">
+
+<div id="playerDiv" class="d-flex flex-row mt-2 w-100" style="height: calc(var(--player-height) + 1rem);">
+    <div class="d-flex flex-column flex-fill">
+        <div id="songDiv" class="d-flex flex-row" style="height: var(--song-div-height); overflow: hidden">
             <img id="songCover" class="ms-2 me-2" src="/img/no-cover_200x200.jpg"
-                 style="height: var(--song-div-height); aspect-ratio: 1/1"
                  alt="Нет обложки"/>
-            <div class="d-flex flex-column white-border" style="width: var(--player-width); align-items: center;">
-                    <span id="songName"
-                          class="fs-3 fw-bold text-center mt-auto" style="width: 90%; margin:0 auto">
-                        не выбрана
-                    </span>
+            <div id="songInfo"
+                 class="d-flex flex-column white-border"
+                 style="width: var(--player-width); align-items: center;">
+                <span id="songName"
+                      class="fs-3 fw-bold text-center mt-auto" style="width: 90%; margin:0 auto">
+                    не выбрана
+                </span>
                 <div class="d-flex flex-row mb-2"
                      style="align-self: center; justify-self: center; height: 50px; align-items: center;">
                     <span id="songAuthor"
@@ -79,28 +82,44 @@
                 </button>
             </div>
         </div>
-        <div class="d-flex flex-row m-2">
-            <button id="reconnectButton" class="btn btn-outline-light me-2" style="min-width: var(--song-div-height);">
+        <div class="player-bottom">
+            <button id="reconnectButton" class="btn btn-outline-light reconnect-btn">
                 Переподключиться <i class="fa-solid fa-rotate-right"></i>
             </button>
-            <div class="mt-auto mb-auto text-center d-flex flex-column service-info" style="width: 100%;">
 
-            </div>
+            <button id="openQueueBtn" class="btn btn-outline-light open-queue-btn">
+                Очередь <i class="fa-solid fa-list"></i>
+            </button>
+
+            <div class="service-info"></div>
         </div>
     </div>
-    <div class="d-flex flex-column white-border ms-2 me-2 mb-2"
-         style="padding: 10px; width: calc(50vw - 0.5rem - 0.5rem);">
-        <div class="d-flex flex-row mb-2">
-            <button id="shuffleAllSongsButton" class="btn btn-outline-light ms-2 mb-2 mt-2 m" style="min-width: 125px;">
-                Все песни <i class="fa-solid fa-shuffle"></i>
-            </button>
-            <h5 class="text-center m-auto">Очередь</h5>
-            <button id="clearQueueBtn" class="btn btn-outline-light me-2 mb-2 mt-2" style="width: 50px">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        </div>
-        <div id="queueDiv" class="d-flex flex-column"
-             style="overflow-y: scroll; overflow-x: hidden; height: 100%;">
+
+    <div id="queuePopup" class="queue-popup">
+        <div class="queue-popup-content">
+            <div class="queue-handle"></div>
+            <div class="queue-header">
+                <div class="queue-header-left">
+                    <button id="shuffleAllSongsButton" class="btn btn-outline-light">
+                        Все песни <i class="fa-solid fa-shuffle"></i>
+                    </button>
+                    <button id="clearQueueBtn" class="btn btn-outline-light">
+                        Очистить <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+
+                <div class="queue-header-title">
+                    Очередь
+                </div>
+
+                <div class="queue-header-right">
+                    <button id="closeQueueBtn" class="btn btn-outline-light">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <div id="queueDiv"></div>
 
         </div>
     </div>
@@ -167,7 +186,12 @@
                     <div class="song-item">
                         @if (yTrack.CoverUri is not null)
                         {
-                            <img src="@("https://" + yTrack.CoverUri[..^2] + "100x100")" alt="Обложка"/>
+                            <img
+                                src="/img/no-cover_100x100.jpg"
+                                data-src="@("https://" + yTrack.CoverUri[..^2] + "100x100")"
+                                alt="Обложка"
+                                class="lazy-img"
+                            />
                         }
                         else
                         {
@@ -554,6 +578,96 @@
 
         shuffleAllSongsButton.onclick = () => {
             connection.invoke("ShuffleAllSongs");
+        }
+
+        let queuePopup = document.querySelector("#queuePopup");
+        let queueContent = document.querySelector(".queue-popup-content");
+        let openQueueBtn = document.querySelector("#openQueueBtn");
+        let closeQueueBtn = document.querySelector("#closeQueueBtn");
+
+        openQueueBtn.onclick = () => {
+            queuePopup.classList.add("active");
+            document.body.style.overflow = "hidden";
+        };
+
+        function closeQueue() {
+            queuePopup.classList.remove("active");
+            document.body.style.overflow = "";
+        }
+
+        closeQueueBtn.onclick = closeQueue;
+
+        queuePopup.onclick = (e) => {
+            if (!queueContent.contains(e.target)) {
+                closeQueue();
+            }
+        };
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+
+        queueContent.addEventListener("touchstart", (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+        });
+
+        queueContent.addEventListener("touchmove", (e) => {
+            if (!isDragging) return;
+
+            currentY = e.touches[0].clientY;
+            let diff = currentY - startY;
+
+            if (diff > 0) {
+                queueContent.style.transform = `translateY(${diff}px)`;
+            }
+
+
+        });
+
+        queueContent.addEventListener("touchend", () => {
+            isDragging = false;
+
+            if (currentY - startY > 120) {
+                closeQueue();
+                queueContent.style.transform = "";
+            } else {
+                queueContent.style.transform = "";
+            }
+
+
+        });
+
+        const cover = document.getElementById("songCover");
+        const reconnectBtn = document.getElementById("reconnectButton");
+
+        if (cover && reconnectBtn) {
+            const observer = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    reconnectBtn.style.width = entry.contentRect.width + "px";
+                    openQueueBtn.style.width = entry.contentRect.width + "px";
+                }
+            });
+
+            observer.observe(cover);
+        }
+
+        const lazyImages = document.querySelectorAll("img.lazy-img");
+
+        if ("IntersectionObserver" in window) {
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src;
+                        img.classList.remove("lazy-img");
+                        obs.unobserve(img);
+                    }
+                });
+            }, {rootMargin: "400px"});
+
+            lazyImages.forEach(img => observer.observe(img));
+        } else {
+            lazyImages.forEach(img => img.src = img.dataset.src);
         }
     </script>
 }
