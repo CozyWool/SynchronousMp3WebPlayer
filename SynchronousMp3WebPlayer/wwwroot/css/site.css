@@ -1,3 +1,9 @@
+:root {
+    --player-width: 100%;
+    --player-height: 32vh;
+    --song-div-height: calc(var(--player-height) - 50px);
+}
+
 html {
     font-size: 14px;
 }
@@ -63,8 +69,8 @@ input[type="range"]::-webkit-slider-thumb {
     border-radius: .75rem;
     cursor: pointer;
 }
-
 html {
+
     position: relative;
     min-height: 100%;
 }

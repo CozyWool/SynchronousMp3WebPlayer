@@ -2,7 +2,6 @@
 
 <style>
     :root {
-        @* --player-width: calc(50vw - var(--song-div-height) - 50px - 0.5rem - 0.5rem - 0.5rem - 0.5rem); *@
         --player-width: 100%;
         --player-height: 32vh;
         --song-div-height: calc(var(--player-height) - 50px);
@@ -164,78 +163,21 @@
     {
         var isActive = index == 0 ? "show active" : "";
 
+        var userKey = index switch
+                      {
+                          0 => "vlad",
+                          1 => "elvir",
+                          2 => "makar",
+                          _ => ""
+                      };
         <div class="tab-pane fade @isActive"
              id="content-@index"
              role="tabpanel">
 
-            <div class="song-container">
-                @foreach (var yTrack in tracks)
-                {
-                    var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
-                    var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-                    string validAuthorName;
-
-                    if (yTrack.Artists.FirstOrDefault() is null)
-                        validAuthorName = "Unknown";
-                    else
-                        validAuthorName = string.Concat(
-                                                        yTrack.Artists.First().Name
-                                                              .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries)
-                                                       );
-
-                    <div class="song-item">
-                        @if (yTrack.CoverUri is not null)
-                        {
-                            <img
-                                src="/img/no-cover_100x100.jpg"
-                                data-src="@("https://" + yTrack.CoverUri[..^2] + "100x100")"
-                                alt="Обложка"
-                                class="lazy-img"
-                            />
-                        }
-                        else
-                        {
-                            <img src="/img/no-cover_100x100.jpg" alt="Нет обложки"/>
-                        }
-                        <button class="ms-2 btn btn-dark changeSongBtn song-main-btn"
-                                data-id="@yTrack.Id"
-                                data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
-                                data-title="@yTrack.Title"
-                                data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
-                                data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
-                            <div class="d-flex flex-column">
-                                <span class="text-truncate fs-5 text-center fw-bold">@yTrack.Title</span>
-                                <span
-                                    class="text-truncate fs-6 text-center">@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")</span>
-                            </div>
-                        </button>
-                        <div class="song-actions">
-                            <button class="ms-2 btn btn-outline-light addToQueueBtn song-action-btn"
-                                    data-id="@yTrack.Id"
-                                    data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
-                                    data-title="@yTrack.Title"
-                                    data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
-                                    data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
-                                <span class="text-truncate text-center"><i class="fa-solid fa-plus"></i></span>
-                            </button>
-                            <button class="ms-2 btn btn-outline-light addNextInQueueBtn song-action-btn"
-                                    data-id="@yTrack.Id"
-                                    data-fileName="@($"/music/{validFileName}_artist_{validAuthorName}.mp3")"
-                                    data-title="@yTrack.Title"
-                                    data-author="@(yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен")"
-                                    data-coverUri="@(yTrack.CoverUri is not null ? "https://" + yTrack.CoverUri[..^2] + "400x400" : "/img/no-cover_200x200.jpg")">
-                                <span class="text-truncate text-center"><i class="fa-solid fa-arrow-turn-up"></i></span>
-                            </button>
-                            <a class="ms-2 btn btn-outline-light song-action-btn"
-                               target="_blank"
-                               href="https://music.yandex.ru/track/@yTrack.Id">
-                                <span class="text-truncate text-center m-auto"><i class="fa-solid fa-heart"></i></span>
-                            </a>
-                        </div>
-                    </div>
-                }
+            <div class="song-container"
+                 data-user="@userKey"
+                 data-loaded="false">
             </div>
-
         </div>
 
         index++;
@@ -651,23 +593,154 @@
             observer.observe(cover);
         }
 
-        const lazyImages = document.querySelectorAll("img.lazy-img");
+        // LAZY LOADING SONG CARDS + IMAGES
+        const PAGE_SIZE = 40;
 
-        if ("IntersectionObserver" in window) {
-            const observer = new IntersectionObserver((entries, obs) => {
+        document.querySelectorAll(".song-container").forEach(container => {
+
+            const user = container.dataset.user;
+            let skip = 0;
+            let isLoading = false;
+            let isFinished = false;
+            let initialized = false;
+
+            // observer для картинок ВНУТРИ контейнера
+            const imageObserver = new IntersectionObserver((entries, obs) => {
                 entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        img.src = img.dataset.src;
-                        img.classList.remove("lazy-img");
-                        obs.unobserve(img);
+                    if (!entry.isIntersecting) return;
+
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.removeAttribute("data-src");
+                    obs.unobserve(img);
+                });
+            }, {
+                root: container,          // ВАЖНО
+                rootMargin: "1000px"       // грузим заранее
+            });
+
+            async function loadMore() {
+                if (isLoading || isFinished) return;
+
+                isLoading = true;
+
+                try {
+                    const response = await fetch(`/music/liked?user=${user}&skip=${skip}&take=${PAGE_SIZE}`);
+                    const tracks = await response.json();
+
+                    if (tracks.length === 0) {
+                        isFinished = true;
+                        return;
+                    }
+
+                    tracks.forEach(track => {
+                        const card = createSongCard(track);
+                        container.appendChild(card);
+                    });
+
+                    skip += PAGE_SIZE;
+
+                    if (tracks.length < PAGE_SIZE) {
+                        isFinished = true;
+                    }
+
+                } catch (e) {
+                    console.error("Ошибка загрузки:", e);
+                }
+
+                isLoading = false;
+            }
+
+            function createSongCard(track) {
+
+                const div = document.createElement("div");
+                div.className = "song-item";
+
+                div.innerHTML = `
+            <img src="/img/no-cover_100x100.jpg"
+                 data-src="${track.coverUri}"
+                 alt="Обложка"
+                 style="height:100px;width:100px;object-fit:cover;" />
+
+            <button class="ms-2 btn btn-dark changeSongBtn song-main-btn"
+                    data-id="${track.id}"
+                    data-fileName="${track.fileName}"
+                    data-title="${track.title}"
+                    data-author="${track.author}"
+                    data-coverUri="${track.coverUri}">
+                <div class="d-flex flex-column">
+                    <span class="text-truncate fs-5 text-center fw-bold">${track.title}</span>
+                    <span class="text-truncate fs-6 text-center">${track.author}</span>
+                </div>
+            </button>
+            <div class="song-actions">
+                    <button class="ms-2 btn btn-outline-light addToQueueBtn song-action-btn"
+                             data-id="${track.id}"
+                             data-fileName="${track.fileName}"
+                             data-title="${track.title}"
+                             data-author="${track.author}"
+                             data-coverUri="${track.coverUri}">
+                        <span class="text-truncate text-center"><i class="fa-solid fa-plus"></i></span>
+                    </button>
+                    <button class="ms-2 btn btn-outline-light addNextInQueueBtn song-action-btn"
+                            data-id="${track.id}"
+                            data-fileName="${track.fileName}"
+                            data-title="${track.title}"
+                            data-author="${track.author}"
+                            data-coverUri="${track.coverUri}">
+                        <span class="text-truncate text-center"><i class="fa-solid fa-arrow-turn-up"></i></span>
+                    </button>
+                    <a class="ms-2 btn btn-outline-light song-action-btn"
+                       target="_blank"
+                       href="https://music.yandex.ru/track/${track.id}">
+                        <span class="text-truncate text-center m-auto"><i class="fa-solid fa-heart"></i></span>
+                    </a>
+                </div>
+        `;
+
+                const img = div.querySelector("img");
+                imageObserver.observe(img);
+
+                return div;
+            }
+
+            function handleScroll() {
+                if (isLoading || isFinished) return;
+
+                const scrollBottom = container.scrollTop + container.clientHeight;
+                const triggerPoint = container.scrollHeight - 1000; // грузим заранее
+
+                if (scrollBottom >= triggerPoint) {
+                    loadMore();
+                }
+            }
+
+            function init() {
+                if (initialized) return;
+                initialized = true;
+
+                loadMore();
+                container.addEventListener("scroll", handleScroll);
+            }
+
+            // если вкладка уже активна
+            if (container.closest(".tab-pane").classList.contains("show")) {
+                init();
+            }
+
+            // если вкладку открыли позже
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+                tab.addEventListener("shown.bs.tab", function (e) {
+                    const targetId = e.target.getAttribute("data-bs-target");
+                    const pane = document.querySelector(targetId);
+
+                    if (pane.contains(container)) {
+                        init();
                     }
                 });
-            }, {rootMargin: "400px"});
+            });
 
-            lazyImages.forEach(img => observer.observe(img));
-        } else {
-            lazyImages.forEach(img => img.src = img.dataset.src);
-        }
+        });
+
     </script>
 }

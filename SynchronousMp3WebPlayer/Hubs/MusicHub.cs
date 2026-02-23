@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
+using SynchronousMp3WebPlayer.Helpers;
 using SynchronousMp3WebPlayer.Models;
 using Yandex.Music.Api;
-using Yandex.Music.Api.Common;
 using Yandex.Music.Api.Extensions.API;
 using Yandex.Music.Client;
 
@@ -123,87 +123,23 @@ public class MusicHub : Hub
     {
         try
         {
-            var apiVlad = new YandexMusicApi();
-            var apiElvir = new YandexMusicApi();
-            var apiMakar = new YandexMusicApi();
-
-            var vladAuthStorage = new AuthStorage();
-            var elvirAuthStorage = new AuthStorage();
-            var makarAuthStorage = new AuthStorage();
-
-            await apiVlad.User.AuthorizeAsync(vladAuthStorage, _yandexTokenVlad);
-            await apiElvir.User.AuthorizeAsync(elvirAuthStorage, _yandexTokenElvir);
-            await apiMakar.User.AuthorizeAsync(makarAuthStorage, _yandexTokenMakar);
-
-
-            var isVladSong = true;
-            var isElvirSong = false;
-            var isMakarSong = false;
-            var yTrack = (await apiVlad.Track.GetAsync(vladAuthStorage, song.Id)).Result.First();
-            if (yTrack.Error is not null)
+            var songDownloader = new SongDownloader();
+            List<string> tokens = [_yandexTokenVlad, _yandexTokenElvir, _yandexTokenMakar];
+            foreach (var token in tokens)
             {
-                isVladSong = false;
-                yTrack = (await apiElvir.Track.GetAsync(elvirAuthStorage, song.Id)).Result.First();
-                if (yTrack.Error is not null)
+                var isUserSong = await songDownloader.TryDownloadSong(song, token);
+                if (isUserSong)
                 {
-                    yTrack = (await apiMakar.Track.GetAsync(makarAuthStorage, song.Id)).Result.First();
-                    if (yTrack.Error is not null)
-                    {
-                        _logger.LogError("'{SongTitle}' не получилось скачать с ЯМ.", song.Title);
-                        return;
-                    }
-
-                    isMakarSong = true;
-                }
-                else
-                {
-                    isElvirSong = true;
+                    return;
                 }
             }
 
-            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
-            var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-            string validAuthorName;
-            if (yTrack.Artists.FirstOrDefault() is null)
-            {
-                validAuthorName = "Unknown";
-            }
-            else
-            {
-                validAuthorName = string.Concat(yTrack.Artists.First().Name
-                                                      .Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-            }
-
-            if (!Directory.Exists("wwwroot/music/"))
-            {
-                Directory.CreateDirectory("wwwroot/music/");
-            }
-
-            if (!File.Exists($"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3"))
-            {
-                if (isVladSong)
-                {
-                    await apiVlad.Track.ExtractToFileAsync(vladAuthStorage,
-                                                           yTrack,
-                                                           $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
-                }
-                else if(isElvirSong)
-                {
-                    await apiElvir.Track.ExtractToFileAsync(elvirAuthStorage,
-                                                            yTrack,
-                                                            $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
-                }
-                else if (isMakarSong)
-                {
-                    await apiElvir.Track.ExtractToFileAsync(makarAuthStorage,
-                                                            yTrack,
-                                                            $"wwwroot/music/{validFileName}_artist_{validAuthorName}.mp3");
-                }
-            }
+            _logger.LogError("'{SongTitle}' не получилось скачать с ЯМ.", song.Title);
+            throw new ArgumentException();
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.LogError("'Message: {Message}'\nStackTrace: {StackTrace}", ex.Message, ex.StackTrace);
         }
     }
 
@@ -336,7 +272,7 @@ public class MusicHub : Hub
                                .ToList();
         foreach (var yTrack in tracks)
         {
-            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"'};
+            var invalidChars = new[] {'/', '\\', '?', '|', '>', '<', ':', '*', '"', '#'};
             var validFileName = string.Concat(yTrack.Title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
             string validAuthorName;
             if (yTrack.Artists.FirstOrDefault() is null)

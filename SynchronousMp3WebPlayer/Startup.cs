@@ -9,6 +9,7 @@ public class Startup
         services.AddSignalR(options => { options.MaximumReceiveMessageSize = 1024 * 1024 * 20; });
         services.AddHttpContextAccessor();
         services.AddMvc();
+        services.AddMemoryCache();
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

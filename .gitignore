@@ -281,3 +281,4 @@ Thumbs.db
 *.7z
 *.mp3
 appsettings.Development.json
+/SynchronousMp3WebPlayer/wwwroot/covers/
