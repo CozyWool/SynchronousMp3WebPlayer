@@ -8,11 +8,11 @@
     }
   },
   "profiles": {
-    "http": {
+    "SynchronousMp3WebPlayer": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "http://:::5123",
+      "applicationUrl": "https://localhost:7289;http://localhost:5123",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
