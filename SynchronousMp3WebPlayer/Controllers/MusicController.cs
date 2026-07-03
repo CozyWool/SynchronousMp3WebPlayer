@@ -41,7 +41,7 @@ public class MusicController(IConfiguration configuration, IMemoryCache cache, I
     }
 
     [HttpGet("liked")]
-    public async Task<IActionResult> GetLikedAsync(string user, int skip = 0, int take = 20)
+    public async Task<IActionResult> GetLikedAsync(string user, int skip = 0, int take = 20, string? search = null)
     {
         var token = user switch
                     {
@@ -51,10 +51,17 @@ public class MusicController(IConfiguration configuration, IMemoryCache cache, I
                         _       => throw new ArgumentException("Unknown user")
                     };
 
-        var tracks = GetLikedTracksCached(user, token)
-                     .Skip(skip)
-                     .Take(take)
-                     .ToList();
+        var likedTracks = GetLikedTracksCached(user, token);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            likedTracks = likedTracks
+                          .Where(track => TrackMatchesSearch(track, search))
+                          .ToList();
+        }
+
+        var tracks = likedTracks.Skip(skip)
+                                .Take(take)
+                                .ToList();
 
         var trackDtos = new List<object>();
         foreach (var yTrack in tracks)
@@ -71,12 +78,25 @@ public class MusicController(IConfiguration configuration, IMemoryCache cache, I
                               id = yTrack.Id,
                               fileName = $"/music/{localFileName}",
                               title = yTrack.Title,
-                              author = yTrack.Artists.FirstOrDefault()?.Name ?? "Неизвестен",
+                              author = GetTrackAuthors(yTrack),
                               coverUri
                           });
         }
 
         return Json(trackDtos);
+    }
+
+    private static bool TrackMatchesSearch(YTrack track, string search)
+    {
+        return track.Title.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+               || track.Artists.Any(artist => artist.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    private static string GetTrackAuthors(YTrack track)
+    {
+        return track.Artists.Count > 0
+                   ? string.Join(", ", track.Artists.Select(artist => artist.Name))
+                   : "Неизвестен";
     }
 
     private List<YTrack> GetLikedTracksCached(string user, string token)

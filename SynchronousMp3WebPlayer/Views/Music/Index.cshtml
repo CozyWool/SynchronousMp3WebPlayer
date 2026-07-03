@@ -154,6 +154,20 @@
     }
 </div>
 
+<div class="playlist-search">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input id="playlistSearchInput"
+           type="search"
+           autocomplete="off"
+           placeholder="Найти песню по названию или автору"/>
+    <button id="clearPlaylistSearchButton"
+            type="button"
+            class="btn btn-outline-light playlist-search-clear"
+            aria-label="Очистить поиск">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+</div>
+
 @{
     index = 0;
 }
@@ -213,9 +227,12 @@
         let volumeValueSpan = document.querySelector("#volumeValueSpan");
         let siteTitle = document.querySelector("#siteTitle");
         let serviceInfoDiv = $(".service-info");
+        let playlistSearchInput = document.querySelector("#playlistSearchInput");
+        let clearPlaylistSearchButton = document.querySelector("#clearPlaylistSearchButton");
         let currentSongIndex = 0;
         let queueCount = 0;
         let isHost = false;
+        let playlistLoaders = [];
 
         function sendServiceInfo(message, color) {
             let span = document.createElement("span");
@@ -596,6 +613,18 @@
         // LAZY LOADING SONG CARDS + IMAGES
         const PAGE_SIZE = 40;
 
+        function getPlaylistSearchQuery() {
+            return playlistSearchInput.value.trim();
+        }
+
+        function debounce(callback, delay) {
+            let timeoutId;
+            return function () {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(callback, delay);
+            };
+        }
+
         document.querySelectorAll(".song-container").forEach(container => {
 
             const user = container.dataset.user;
@@ -603,6 +632,7 @@
             let isLoading = false;
             let isFinished = false;
             let initialized = false;
+            let shouldReloadAfterLoad = false;
 
             // observer для картинок ВНУТРИ контейнера
             const imageObserver = new IntersectionObserver((entries, obs) => {
@@ -619,13 +649,36 @@
                 rootMargin: "1000px"       // грузим заранее
             });
 
-            async function loadMore() {
+            async function loadMore(reset = false) {
+                if (reset && isLoading) {
+                    shouldReloadAfterLoad = true;
+                    return;
+                }
+
+                if (reset) {
+                    skip = 0;
+                    isFinished = false;
+                    container.innerHTML = "";
+                    container.scrollTop = 0;
+                }
+
                 if (isLoading || isFinished) return;
 
                 isLoading = true;
 
                 try {
-                    const response = await fetch(`/music/liked?user=${user}&skip=${skip}&take=${PAGE_SIZE}`);
+                    const searchQuery = getPlaylistSearchQuery();
+                    const queryParams = new URLSearchParams({
+                        user: user,
+                        skip: skip,
+                        take: PAGE_SIZE
+                    });
+
+                    if (searchQuery.length > 0) {
+                        queryParams.set("search", searchQuery);
+                    }
+
+                    const response = await fetch(`/music/liked?${queryParams.toString()}`);
                     const tracks = await response.json();
 
                     if (tracks.length === 0) {
@@ -646,9 +699,14 @@
 
                 } catch (e) {
                     console.error("Ошибка загрузки:", e);
-                }
+                } finally {
+                    isLoading = false;
 
-                isLoading = false;
+                    if (shouldReloadAfterLoad) {
+                        shouldReloadAfterLoad = false;
+                        await loadMore(true);
+                    }
+                }
             }
 
             function createSongCard(track) {
@@ -723,6 +781,14 @@
                 container.addEventListener("scroll", handleScroll);
             }
 
+            function reload() {
+                if (initialized) {
+                    loadMore(true);
+                }
+            }
+
+            playlistLoaders.push({ init, reload });
+
             // если вкладка уже активна
             if (container.closest(".tab-pane").classList.contains("show")) {
                 init();
@@ -740,6 +806,17 @@
                 });
             });
 
+        });
+
+        const reloadPlaylists = debounce(() => {
+            playlistLoaders.forEach(loader => loader.reload());
+        }, 250);
+
+        playlistSearchInput.addEventListener("input", reloadPlaylists);
+        clearPlaylistSearchButton.addEventListener("click", () => {
+            playlistSearchInput.value = "";
+            playlistSearchInput.focus();
+            playlistLoaders.forEach(loader => loader.reload());
         });
 
     </script>

@@ -292,7 +292,9 @@ public class MusicHub : Hub
                            Id = yTrack.Id,
                            FileName = $"/music/{validFileName}_artist_{validAuthorName}.mp3",
                            Title = yTrack.Title,
-                           Author = yTrack.Artists.Count > 0 ? yTrack.Artists[0].Name : "Неизвестен",
+                           Author = yTrack.Artists.Count > 0
+                                        ? string.Join(", ", yTrack.Artists.Select(artist => artist.Name))
+                                        : "Неизвестен",
                            CoverUri = yTrack.CoverUri is not null
                                           ? "https://" + yTrack.CoverUri[..^2] + "400x400"
                                           : "/img/no-cover_200x200.jpg"

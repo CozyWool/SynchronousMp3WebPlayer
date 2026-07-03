@@ -27,6 +27,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="wwwroot\covers\" />
       <Folder Include="wwwroot\music\" />
     </ItemGroup>
 
