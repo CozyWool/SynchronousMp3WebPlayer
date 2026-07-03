@@ -1,5 +1,5 @@
+using Microsoft.Extensions.Hosting.WindowsServices;
 using SynchronousMp3WebPlayer;
-using SynchronousMp3WebPlayer.Helpers;
 
 try
 {
@@ -9,30 +9,25 @@ catch (Exception ex)
 {
     Console.WriteLine(ex);
 }
-finally
-{
-    if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != "Development")
-    {
-        Console.Write("Удалить все файлы песен с диска? (y/n): ");
-        if (Console.ReadLine()?.ToLower() == "y")
-        {
-            FileManager.DeleteFilesInDirectory("wwwroot/music");
-        }
-        else
-        {
-            Console.WriteLine("Песни не удалены.");
-        }
-    }
-}
 
 return;
 
 static IHostBuilder CreateHostBuilder(string[] args)
 {
-    DotNetEnv.Env.Load();
+    var contentRoot = WindowsServiceHelpers.IsWindowsService()
+                          ? AppContext.BaseDirectory
+                          : Directory.GetCurrentDirectory();
+
+    Directory.SetCurrentDirectory(contentRoot);
+
+    DotNetEnv.Env.Load(Path.Combine(contentRoot, ".env"));
+
     return Host.CreateDefaultBuilder(args)
-               .ConfigureAppConfiguration(builder =>
-                                              builder
-                                                  .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json"))
+               .UseContentRoot(contentRoot)
+               .UseWindowsService(options => { options.ServiceName = "SynchronousMp3WebPlayer"; })
+               .ConfigureAppConfiguration((context, builder) =>
+                                              builder.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json",
+                                                                  optional: true,
+                                                                  reloadOnChange: true))
                .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Startup>());
 }
