@@ -1,33 +1,5 @@
 Получить токен: https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d
 
-Создать самоподписанный сертификат для HTTPS:
-
-```powershell
-$appPath = "F:\SynchronousMp3WebPlayer"
-$certPassword = "change-me"
-$securePassword = ConvertTo-SecureString $certPassword -AsPlainText -Force
-
-New-Item -ItemType Directory -Force "$appPath\certs"
-
-$cert = New-SelfSignedCertificate `
-    -DnsName "localhost", $env:COMPUTERNAME `
-    -CertStoreLocation "Cert:\CurrentUser\My" `
-    -FriendlyName "SynchronousMp3WebPlayer"
-
-Export-PfxCertificate `
-    -Cert $cert `
-    -FilePath "$appPath\certs\synchronous-player.pfx" `
-    -Password $securePassword
-
-Export-Certificate `
-    -Cert $cert `
-    -FilePath "$appPath\certs\synchronous-player.cer"
-
-Import-Certificate `
-    -FilePath "$appPath\certs\synchronous-player.cer" `
-    -CertStoreLocation "Cert:\CurrentUser\Root"
-```
-
 Пример `.env` для HTTPS:
 
 ```dotenv

@@ -602,6 +602,12 @@
         if (cover && reconnectBtn) {
             const observer = new ResizeObserver(entries => {
                 for (let entry of entries) {
+                    if (window.matchMedia("(max-width: 768px)").matches) {
+                        reconnectBtn.style.width = "";
+                        openQueueBtn.style.width = "";
+                        continue;
+                    }
+
                     reconnectBtn.style.width = entry.contentRect.width + "px";
                     openQueueBtn.style.width = entry.contentRect.width + "px";
                 }
