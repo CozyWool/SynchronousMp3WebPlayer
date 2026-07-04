@@ -14,6 +14,7 @@ public class MusicHub : Hub
     private static SongModel? CurrentSong { get; set; }
     private static int CurrentSongIndex { get; set; }
     private static List<SongModel> SongQueue { get; set; } = [];
+    private static readonly object QueueFileLock = new();
     private static List<UserModel> Users { get; } = [];
     private static bool IsHostGranted { get; set; }
     private static bool IsPlaying { get; set; }
@@ -23,6 +24,7 @@ public class MusicHub : Hub
     private readonly string _yandexTokenElvir;
     private readonly string _yandexTokenMakar;
     private static bool _loadedQueueFromFile;
+    private static string? _queueFilePath;
 
     public MusicHub(IConfiguration configuration, ILogger<MusicHub> logger)
     {
@@ -30,11 +32,93 @@ public class MusicHub : Hub
         _yandexTokenVlad = configuration.GetValue<string>("TOKEN_VLAD") ?? throw new NullReferenceException();
         _yandexTokenElvir = configuration.GetValue<string>("TOKEN_ELVIR") ?? throw new NullReferenceException();
         _yandexTokenMakar = configuration.GetValue<string>("TOKEN_MAKAR") ?? throw new NullReferenceException();
-        if (File.Exists("wwwroot/queue.json") && !_loadedQueueFromFile)
+    }
+
+    public static void LoadQueueFromFile(string contentRootPath, ILogger logger)
+    {
+        lock (QueueFileLock)
         {
-            SongQueue = JsonConvert.DeserializeObject<List<SongModel>>(File.ReadAllText("wwwroot/queue.json")) ?? [];
+            if (_loadedQueueFromFile)
+            {
+                return;
+            }
+
+            _queueFilePath = GetQueueFilePath(contentRootPath);
+            var legacyQueueFilePath = Path.Combine(contentRootPath, "wwwroot", "queue.json");
+            var queueFilePath = File.Exists(_queueFilePath) ? _queueFilePath : legacyQueueFilePath;
+            if (!File.Exists(queueFilePath))
+            {
+                _loadedQueueFromFile = true;
+                return;
+            }
+
+            try
+            {
+                var queueJson = File.ReadAllText(queueFilePath);
+                if (queueJson.TrimStart().StartsWith("["))
+                {
+                    SongQueue = JsonConvert.DeserializeObject<List<SongModel>>(queueJson) ?? [];
+                    CurrentSongIndex = 0;
+                }
+                else
+                {
+                    var queueState = JsonConvert.DeserializeObject<QueueStateModel>(queueJson) ?? new QueueStateModel();
+                    SongQueue = queueState.Songs;
+                    CurrentSongIndex = SongQueue.Count == 0
+                                           ? 0
+                                           : Math.Clamp(queueState.CurrentSongIndex, 0, SongQueue.Count - 1);
+                }
+
+                ReindexQueue();
+                CurrentSong = SongQueue.Count > 0 ? SongQueue[CurrentSongIndex] : null;
+                PausePlayback(0);
+                logger.LogInformation("Очередь загружена из '{QueueFilePath}'. Треков: {QueueCount}. Текущий индекс: {CurrentSongIndex}",
+                                      queueFilePath, SongQueue.Count, CurrentSongIndex);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Не удалось загрузить очередь из '{QueueFilePath}'", queueFilePath);
+                SongQueue = [];
+                CurrentSong = null;
+                CurrentSongIndex = 0;
+            }
+
             _loadedQueueFromFile = true;
         }
+    }
+
+    public static void SaveQueueToFile(string contentRootPath, ILogger logger)
+    {
+        lock (QueueFileLock)
+        {
+            var queueFilePath = _queueFilePath ?? GetQueueFilePath(contentRootPath);
+            var tempQueueFilePath = queueFilePath + ".tmp";
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(queueFilePath)!);
+                ReindexQueue();
+                var queueState = new QueueStateModel
+                                 {
+                                     CurrentSongIndex = CurrentSong is null ? 0 : CurrentSongIndex,
+                                     Songs = SongQueue
+                                 };
+                var json = JsonConvert.SerializeObject(queueState, Formatting.Indented);
+                File.WriteAllText(tempQueueFilePath, json);
+                File.Move(tempQueueFilePath, queueFilePath, true);
+                logger.LogInformation("Очередь сохранена в '{QueueFilePath}'. Треков: {QueueCount}. Текущий индекс: {CurrentSongIndex}",
+                                      queueFilePath, SongQueue.Count, queueState.CurrentSongIndex);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Не удалось сохранить очередь в '{QueueFilePath}'", queueFilePath);
+            }
+        }
+    }
+
+    private static string GetQueueFilePath(string contentRootPath)
+    {
+        return Path.Combine(contentRootPath, "queue.json");
     }
 
     private void LogSong(string message, SongModel currentSong)

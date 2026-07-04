@@ -23,8 +23,11 @@ public class Startup
         services.AddMemoryCache();
     }
 
-    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime, ILogger<Startup> logger)
     {
+        MusicHub.LoadQueueFromFile(env.ContentRootPath, logger);
+        lifetime.ApplicationStopping.Register(() => MusicHub.SaveQueueToFile(env.ContentRootPath, logger));
+
         if (env.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
