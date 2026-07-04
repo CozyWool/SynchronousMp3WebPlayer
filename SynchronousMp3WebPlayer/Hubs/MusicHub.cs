@@ -284,6 +284,37 @@ public class MusicHub : Hub
         await Clients.All.SendAsync("RemoveFromQueue", index, CurrentSongIndex);
     }
 
+    public async Task MoveInQueue(string fromQueueIndex, string toQueueIndex)
+    {
+        var fromIndex = int.TryParse(fromQueueIndex, out var fromQueueIndexInt) ? fromQueueIndexInt : -1;
+        var toIndex = int.TryParse(toQueueIndex, out var toQueueIndexInt) ? toQueueIndexInt : -1;
+        if (fromIndex < 0 || fromIndex >= SongQueue.Count || toIndex < 0 || toIndex >= SongQueue.Count || fromIndex == toIndex)
+        {
+            return;
+        }
+
+        var song = SongQueue[fromIndex];
+        SongQueue.RemoveAt(fromIndex);
+        SongQueue.Insert(toIndex, song);
+
+        if (fromIndex == CurrentSongIndex)
+        {
+            CurrentSongIndex = toIndex;
+        }
+        else if (fromIndex < CurrentSongIndex && toIndex >= CurrentSongIndex)
+        {
+            CurrentSongIndex--;
+        }
+        else if (fromIndex > CurrentSongIndex && toIndex <= CurrentSongIndex)
+        {
+            CurrentSongIndex++;
+        }
+
+        ReindexQueue();
+        CurrentSong = SongQueue[CurrentSongIndex];
+        await Clients.All.SendAsync("QueueReordered", SongQueue, CurrentSongIndex);
+    }
+
     private static void ReindexQueue()
     {
         for (var i = 0; i < SongQueue.Count; i++)

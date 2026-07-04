@@ -356,16 +356,78 @@
         });
 
         connection.on("AddToQueue", addToQueue);
+        let activeQueueDragElement = null;
+        let activeQueueDragIndex = null;
+        let activeQueueDropElement = null;
+        let activeQueueDropIndex = null;
 
-        function addToQueue(song) {
-            queueCount++;
+        function clearQueueDropIndicator() {
+            if (!activeQueueDropElement) return;
+
+            activeQueueDropElement.classList.remove("queue-drop-before");
+            activeQueueDropElement.classList.remove("queue-drop-after");
+            activeQueueDropElement = null;
+            activeQueueDropIndex = null;
+        }
+
+        function getQueueElementFromChild(element) {
+            while (element && element.parentElement !== queueDiv) {
+                element = element.parentElement;
+            }
+
+            return element && element.parentElement === queueDiv ? element : null;
+        }
+
+        function updateQueueDropIndicator(clientX, clientY) {
+            let target = document.elementFromPoint(clientX, clientY);
+            let targetQueueElement = getQueueElementFromChild(target);
+            if (!targetQueueElement || targetQueueElement === activeQueueDragElement) {
+                clearQueueDropIndicator();
+                return;
+            }
+
+            let targetQueueIndex = targetQueueElement.getAttribute("data-queueIndex");
+            let targetRect = targetQueueElement.getBoundingClientRect();
+            let placeAfter = clientY > targetRect.top + targetRect.height / 2;
+
+            if (activeQueueDropElement !== targetQueueElement) {
+                clearQueueDropIndicator();
+                activeQueueDropElement = targetQueueElement;
+            }
+
+            activeQueueDropElement.classList.toggle("queue-drop-before", !placeAfter);
+            activeQueueDropElement.classList.toggle("queue-drop-after", placeAfter);
+            activeQueueDropIndex = Number(targetQueueIndex) + (placeAfter ? 1 : 0);
+            if (activeQueueDragIndex !== null && activeQueueDropIndex > Number(activeQueueDragIndex)) {
+                activeQueueDropIndex--;
+            }
+        }
+
+        function finishQueueDrag(queueDragHandle) {
+            if (activeQueueDragIndex !== null && activeQueueDropIndex !== null && Number(activeQueueDragIndex) !== activeQueueDropIndex) {
+                connection.invoke("MoveInQueue", activeQueueDragIndex.toString(), activeQueueDropIndex.toString());
+            }
+
+            activeQueueDragElement.style.opacity = "";
+            queueDragHandle.style.cursor = "grab";
+            activeQueueDragElement = null;
+            activeQueueDragIndex = null;
+            clearQueueDropIndicator();
+        }
+
+        function createQueueSongElement(song) {
             let songElement = document.createElement("div");
             songElement.id = "song_" + song.queueIndex;
+            songElement.setAttribute("data-queueIndex", song.queueIndex);
             songElement.classList.add("mb-2");
             songElement.classList.add("d-flex");
             songElement.classList.add("flex-row");
             songElement.classList.add("justify-content-center");
             songElement.innerHTML = `
+                    <button class="me-2 btn btn-outline-light queueDragHandle" style="height: 50px; width: 50px; cursor: grab; touch-action: none"
+                            data-queueIndex="${song.queueIndex}">
+                        <i class="fa-solid fa-grip-vertical"></i>
+                    </button>
                     <img src="${song.coverUri}" alt="Обложка" style="height: 50px; width: 50px"/>
             
                     <button class="ms-2 btn btn-dark queueSongBtn d-flex flex-row" style="height: 50px; width: calc(50vw - 50px - 0.5rem)"
@@ -379,13 +441,81 @@
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>`;
-            queueDiv.appendChild(songElement);
 
             let queueSongBtn = songElement.querySelector(".queueSongBtn");
             queueSongBtn.addEventListener("click", function () {
                 let queueIndex = queueSongBtn.getAttribute("data-queueIndex");
                 connection.invoke("ChangeSongByQueueIndex", queueIndex);
             });
+
+            let queueDragHandle = songElement.querySelector(".queueDragHandle");
+            queueDragHandle.addEventListener("pointerdown", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                activeQueueDragElement = songElement;
+                activeQueueDragIndex = songElement.getAttribute("data-queueIndex");
+                queueDragHandle.setPointerCapture(e.pointerId);
+                songElement.style.opacity = "0.5";
+                queueDragHandle.style.cursor = "grabbing";
+            });
+
+            queueDragHandle.addEventListener("pointermove", function (e) {
+                if (activeQueueDragElement !== songElement) return;
+                e.preventDefault();
+                updateQueueDropIndicator(e.clientX, e.clientY);
+            });
+
+            queueDragHandle.addEventListener("pointerup", function (e) {
+                if (activeQueueDragElement !== songElement) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                updateQueueDropIndicator(e.clientX, e.clientY);
+                finishQueueDrag(queueDragHandle);
+            });
+
+            queueDragHandle.addEventListener("pointercancel", function () {
+                songElement.style.opacity = "";
+                queueDragHandle.style.cursor = "grab";
+                activeQueueDragElement = null;
+                activeQueueDragIndex = null;
+                clearQueueDropIndicator();
+            });
+
+            return songElement;
+        }
+
+        function updateQueueSongIndexes() {
+            let queueSongs = Array.from(queueDiv.children);
+            queueSongs.forEach((songElement, index) => {
+                songElement.id = `song_${index}`;
+                songElement.setAttribute("data-queueIndex", index);
+                songElement.querySelector(".queueDragHandle").setAttribute("data-queueIndex", index);
+                songElement.querySelector(".queueSongBtn").setAttribute("data-queueIndex", index);
+                songElement.querySelector(".removeFromQueueBtn").setAttribute("data-queueIndex", index);
+            });
+        }
+
+        function setActiveQueueSong(queueIndex) {
+            $(".queueSongBtn").addClass("btn-dark");
+            $(".queueSongBtn").removeClass("btn-light");
+
+            let activeSong = $("#song_" + queueIndex + " .queueSongBtn");
+            activeSong.addClass("btn-light");
+            activeSong.removeClass("btn-dark");
+        }
+
+        function renderQueue(songs, newCurrentSongIndex) {
+            queueDiv.innerHTML = "";
+            songs.forEach(song => queueDiv.appendChild(createQueueSongElement(song)));
+            queueCount = songs.length;
+            currentSongIndex = newCurrentSongIndex;
+            setActiveQueueSong(currentSongIndex);
+        }
+
+        function addToQueue(song) {
+            queueCount++;
+            queueDiv.appendChild(createQueueSongElement(song));
         }
 
         $(document).on("click", ".addToQueueBtn", function () {
@@ -409,44 +539,14 @@
 
         function addNextInQueue(song) {
             queueCount++;
-            let songElement = document.createElement("div");
-            songElement.id = "song_" + song.queueIndex;
-            songElement.classList.add("mb-2");
-            songElement.classList.add("d-flex");
-            songElement.classList.add("flex-row");
-            songElement.classList.add("justify-content-center");
-            songElement.innerHTML = `
-                    <img src="${song.coverUri}" alt="Обложка" style="height: 50px; width: 50px"/>
-
-                    <button class="ms-2 btn btn-dark queueSongBtn d-flex flex-row" style="height: 50px; width: calc(50vw - 50px - 0.5rem)"
-                            data-queueIndex="${song.queueIndex}">
-                        <span class="text-truncate fs-6 text-center fw-bold" style="width: 80%">${song.title}</span>
-                        <span class="text-truncate fs-6 text-center"
-                              style="width: 20%">${song.author}</span>
-                    </button>
-                    <button class="ms-2 btn btn-outline-light removeFromQueueBtn" style="height: 50px; width: 50px"
-                            data-queueIndex="${song.queueIndex}">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>`;
-
-            let queueSongBtn = songElement.querySelector(".queueSongBtn");
-            queueSongBtn.addEventListener("click", function () {
-                let queueIndex = queueSongBtn.getAttribute("data-queueIndex");
-                connection.invoke("ChangeSongByQueueIndex", queueIndex);
-            });
-            let nextSongs = []
-            for (let i = currentSongIndex + 1; i < queueCount - 1; i++) {
-                let song = queueDiv.querySelector(`#song_${i}`);
-                nextSongs.push(song);
+            let songElement = createQueueSongElement(song);
+            let currentSongElement = queueDiv.querySelector(`#song_${currentSongIndex}`);
+            if (currentSongElement) {
+                currentSongElement.insertAdjacentElement('afterend', songElement);
+            } else {
+                queueDiv.appendChild(songElement);
             }
-            for (let i = 0; i < nextSongs.length; i++) {
-                let queueSong = nextSongs[i];
-                queueSong.id = `song_${i + currentSongIndex + 2}`;
-                queueSong.querySelector(`.queueSongBtn`).setAttribute("data-queueIndex", i + currentSongIndex + 2);
-                queueSong.querySelector(`.removeFromQueueBtn`).setAttribute("data-queueIndex", i + currentSongIndex + 2);
-            }
-            queueDiv.querySelector(`#song_${currentSongIndex}`).insertAdjacentElement('afterend', songElement);
+            updateQueueSongIndexes();
         }
 
         $(document).on("click", ".addNextInQueueBtn", function () {
@@ -484,13 +584,11 @@
             queueCount--;
             currentSongIndex = newCurrentSongIndex;
 
-            let queueSongs = Array.from(queueDiv.children);
-            queueSongs.forEach((songElement, index) => {
-                songElement.id = `song_${index}`;
-                songElement.querySelector(".queueSongBtn").setAttribute("data-queueIndex", index);
-                songElement.querySelector(".removeFromQueueBtn").setAttribute("data-queueIndex", index);
-            });
+            updateQueueSongIndexes();
+            setActiveQueueSong(currentSongIndex);
         });
+
+        connection.on("QueueReordered", renderQueue);
 
         connection.on("ClearQueue", function () {
             queueDiv.innerHTML = ``;
@@ -597,7 +695,12 @@
         let isDragging = false;
 
         queueContent.addEventListener("touchstart", (e) => {
+            if (e.target.closest(".queueDragHandle")) {
+                return;
+            }
+
             startY = e.touches[0].clientY;
+            currentY = startY;
             isDragging = true;
         });
 
@@ -615,6 +718,8 @@
         });
 
         queueContent.addEventListener("touchend", () => {
+            if (!isDragging) return;
+
             isDragging = false;
 
             if (currentY - startY > 120) {

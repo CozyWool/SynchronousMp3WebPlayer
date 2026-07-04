@@ -410,6 +410,31 @@ body.dark-theme {
     transform: translateY(0);
 }
 
+#queueDiv > div {
+    position: relative;
+}
+
+#queueDiv > div.queue-drop-before::before,
+#queueDiv > div.queue-drop-after::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #f8f9fa;
+    border-radius: 999px;
+    box-shadow: 0 0 10px rgba(248, 249, 250, 0.8);
+    z-index: 1;
+}
+
+#queueDiv > div.queue-drop-before::before {
+    top: -6px;
+}
+
+#queueDiv > div.queue-drop-after::after {
+    bottom: -6px;
+}
+
 .queue-handle {
     width: 50px;
     height: 5px;
