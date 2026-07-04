@@ -233,6 +233,13 @@
         let queueCount = 0;
         let isHost = false;
         let playlistLoaders = [];
+        let pendingPlayTime = null;
+        let pendingPlayStartedAt = null;
+        let pendingPlayShouldNotifyServer = false;
+        let suppressNextPlayEvent = false;
+        let suppressNextPauseEvent = false;
+        let ignorePauseEventsUntil = 0;
+        let unlockPlaybackHandlerRegistered = false;
 
         function sendServiceInfo(message, color) {
             let span = document.createElement("span");
@@ -240,6 +247,37 @@
             span.style.color = color;
             serviceInfoDiv.append(span);
             serviceInfoDiv.scrollTop(serviceInfoDiv[0].scrollHeight);
+        }
+
+        function registerPlaybackUnlockHandler() {
+            if (unlockPlaybackHandlerRegistered) return;
+
+            unlockPlaybackHandlerRegistered = true;
+            const unlockPlayback = () => {
+                unlockPlaybackHandlerRegistered = false;
+                if (pendingPlayTime === null) return;
+
+                const elapsedSeconds = (performance.now() - pendingPlayStartedAt) / 1000;
+                const syncedTime = pendingPlayTime + elapsedSeconds;
+                const shouldNotifyServer = pendingPlayShouldNotifyServer;
+                pendingPlayTime = null;
+                pendingPlayStartedAt = null;
+                pendingPlayShouldNotifyServer = false;
+                playSong(syncedTime, shouldNotifyServer);
+            };
+
+            document.addEventListener("pointerdown", unlockPlayback, { once: true, capture: true });
+            document.addEventListener("keydown", unlockPlayback, { once: true, capture: true });
+        }
+
+        function postponePlaybackUntilUserGesture(time, shouldNotifyServer) {
+            pendingPlayTime = Number(time) || 0;
+            pendingPlayStartedAt = performance.now();
+            pendingPlayShouldNotifyServer = shouldNotifyServer;
+            playButton.style.display = "block";
+            pauseButton.style.display = "none";
+            registerPlaybackUnlockHandler();
+            sendServiceInfo("Браузер заблокировал автозапуск. Нажмите куда-нибудь, чтобы синхронизировать звук.", "orange");
         }
 
         async function connect() {
@@ -263,12 +301,10 @@
 
 
         playButton.onclick = function () {
-            playSong(audio.currentTime);
-            connection.invoke("PlaySong", audio.currentTime);
+            playSong(audio.currentTime, true);
         }
         pauseButton.onclick = function () {
-            pauseSong();
-            connection.invoke("PauseSong");
+            pauseSong(audio.currentTime, true);
         }
         muteButton.onclick = function () {
             if (audio.muted) {
@@ -297,16 +333,14 @@
             }
         }
         forwardButton.onclick = function () {
-            playSong(audio.currentTime + 10);
-            connection.invoke("PlaySong", audio.currentTime);
+            playSong(audio.currentTime + 10, true);
         }
         backwardButton.onclick = function () {
             if (audio.currentTime < 10) {
                 connection.invoke("PreviousSong");
                 return;
             }
-            playSong(audio.currentTime - 10);
-            connection.invoke("PlaySong", audio.currentTime);
+            playSong(audio.currentTime - 10, true);
         }
         forwardStepButton.onclick = function () {
             connection.invoke("NextSong");
@@ -336,8 +370,10 @@
 
 
             currentSongIndex = song.queueIndex;
+            suppressNextPauseEvent = true;
+            ignorePauseEventsUntil = performance.now() + 1000;
             audio.load();
-            playSong(0);
+            setTimeout(() => suppressNextPauseEvent = false, 0);
         });
         $(document).on("click", ".changeSongBtn", function () {
             let id = $(this).attr("data-id");
@@ -598,21 +634,73 @@
             connection.invoke("ClearQueue");
         });
 
-        connection.on("PauseSong", pauseSong);
+        connection.on("PauseSong", function (time) {
+            pauseSong(time, false);
+        });
 
-        function pauseSong() {
+        function pauseSong(time, shouldNotifyServer = false) {
+            pendingPlayTime = null;
+            pendingPlayStartedAt = null;
+            pendingPlayShouldNotifyServer = false;
+
+            if (time !== undefined && time !== null) {
+                audio.currentTime = Number(time) || 0;
+            }
+
+            suppressNextPauseEvent = true;
             audio.pause();
+            setTimeout(() => suppressNextPauseEvent = false, 0);
             playButton.style.display = "block";
             pauseButton.style.display = "none";
+
+            if (shouldNotifyServer) {
+                connection.invoke("PauseSong", audio.currentTime);
+            }
         }
 
-        connection.on("PlaySong", playSong);
+        connection.on("PlaySong", function (time) {
+            playSong(time, false);
+        });
 
-        function playSong(time) {
-            playButton.style.display = "none";
-            pauseButton.style.display = "block";
-            audio.currentTime = time;
-            audio.play();
+        function playSong(time, shouldNotifyServer = false) {
+            const playbackTime = Number(time) || 0;
+            audio.currentTime = playbackTime;
+            suppressNextPlayEvent = true;
+
+            const playPromise = audio.play();
+            if (playPromise === undefined) {
+                playButton.style.display = "none";
+                pauseButton.style.display = "block";
+                if (shouldNotifyServer) {
+                    connection.invoke("PlaySong", audio.currentTime);
+                }
+                return;
+            }
+
+            playPromise
+                .then(() => {
+                    setTimeout(() => suppressNextPlayEvent = false, 0);
+                    playButton.style.display = "none";
+                    pauseButton.style.display = "block";
+                    pendingPlayTime = null;
+                    pendingPlayStartedAt = null;
+                    pendingPlayShouldNotifyServer = false;
+
+                    if (shouldNotifyServer) {
+                        connection.invoke("PlaySong", audio.currentTime);
+                    }
+                })
+                .catch(error => {
+                    suppressNextPlayEvent = false;
+                    if (error?.name === "NotAllowedError") {
+                        postponePlaybackUntilUserGesture(playbackTime, shouldNotifyServer);
+                        return;
+                    }
+
+                    console.error(error);
+                    playButton.style.display = "block";
+                    pauseButton.style.display = "none";
+                });
         }
 
         audio.onended = function () {
@@ -622,13 +710,28 @@
         }
         audio.onpause = function (e) {
             e.preventDefault();
+            if (performance.now() < ignorePauseEventsUntil) {
+                return;
+            }
+
+            if (suppressNextPauseEvent) {
+                suppressNextPauseEvent = false;
+                return;
+            }
+
             if (audio.duration - audio.currentTime < 0.1) {
                 return;
             }
-            pauseSong();
-            connection.invoke("PauseSong");
+            playButton.style.display = "block";
+            pauseButton.style.display = "none";
+            connection.invoke("PauseSong", audio.currentTime);
         }
         audio.onplay = function () {
+            if (suppressNextPlayEvent) {
+                suppressNextPlayEvent = false;
+                return;
+            }
+
             connection.invoke("PlaySong", audio.currentTime);
         }
         audio.ontimeupdate = function () {

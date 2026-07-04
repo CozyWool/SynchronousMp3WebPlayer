@@ -16,6 +16,9 @@ public class MusicHub : Hub
     private static List<SongModel> SongQueue { get; set; } = [];
     private static List<UserModel> Users { get; } = [];
     private static bool IsHostGranted { get; set; }
+    private static bool IsPlaying { get; set; }
+    private static decimal LastPlaybackPosition { get; set; }
+    private static DateTimeOffset LastPlaybackPositionUpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     private readonly string _yandexTokenVlad;
     private readonly string _yandexTokenElvir;
     private readonly string _yandexTokenMakar;
@@ -50,6 +53,18 @@ public class MusicHub : Hub
         foreach (var song in SongQueue)
         {
             await Clients.Caller.SendAsync("AddToQueue", song);
+        }
+
+        if (CurrentSong is not null)
+        {
+            if (IsPlaying)
+            {
+                await Clients.Caller.SendAsync("PlaySong", GetCurrentPlaybackPosition());
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("PauseSong", LastPlaybackPosition);
+            }
         }
 
         var user = new UserModel
@@ -107,7 +122,9 @@ public class MusicHub : Hub
 
         CurrentSongIndex = CurrentSong.QueueIndex;
         LogSong("Now playing", CurrentSong);
+        StartPlayback(0);
         await Clients.All.SendAsync("ChangeSong", song);
+        await Clients.All.SendAsync("PlaySong", LastPlaybackPosition);
     }
 
     private async Task CheckFile(SongModel song)
@@ -157,7 +174,9 @@ public class MusicHub : Hub
         CurrentSong = song;
         CurrentSongIndex = SongQueue.IndexOf(CurrentSong);
         LogSong("Now playing", CurrentSong);
+        StartPlayback(0);
         await Clients.All.SendAsync("ChangeSong", song);
+        await Clients.All.SendAsync("PlaySong", LastPlaybackPosition);
     }
 
     public async Task NextSong()
@@ -180,7 +199,9 @@ public class MusicHub : Hub
 
         CurrentSong = song;
         LogSong("Now playing", CurrentSong);
+        StartPlayback(0);
         await Clients.All.SendAsync("ChangeSong", song);
+        await Clients.All.SendAsync("PlaySong", LastPlaybackPosition);
     }
 
     public async Task PreviousSong()
@@ -203,17 +224,46 @@ public class MusicHub : Hub
 
         CurrentSong = song;
         LogSong("Now playing", CurrentSong);
+        StartPlayback(0);
         await Clients.All.SendAsync("ChangeSong", song);
+        await Clients.All.SendAsync("PlaySong", LastPlaybackPosition);
     }
 
-    public async Task PauseSong()
+    public async Task PauseSong(decimal time)
     {
-        await Clients.Others.SendAsync("PauseSong");
+        PausePlayback(time);
+        await Clients.Others.SendAsync("PauseSong", LastPlaybackPosition);
     }
 
     public async Task PlaySong(decimal time)
     {
-        await Clients.Others.SendAsync("PlaySong", time);
+        StartPlayback(time);
+        await Clients.Others.SendAsync("PlaySong", LastPlaybackPosition);
+    }
+
+    private static decimal GetCurrentPlaybackPosition()
+    {
+        if (!IsPlaying)
+        {
+            return LastPlaybackPosition;
+        }
+
+        var elapsedSeconds = (decimal)(DateTimeOffset.UtcNow - LastPlaybackPositionUpdatedAt).TotalSeconds;
+        return LastPlaybackPosition + elapsedSeconds;
+    }
+
+    private static void StartPlayback(decimal time)
+    {
+        LastPlaybackPosition = Math.Max(0, time);
+        LastPlaybackPositionUpdatedAt = DateTimeOffset.UtcNow;
+        IsPlaying = true;
+    }
+
+    private static void PausePlayback(decimal time)
+    {
+        LastPlaybackPosition = Math.Max(0, time);
+        LastPlaybackPositionUpdatedAt = DateTimeOffset.UtcNow;
+        IsPlaying = false;
     }
 
     public async Task AddToQueue(SongModel song)
@@ -327,6 +377,8 @@ public class MusicHub : Hub
     {
         SongQueue.Clear();
         CurrentSongIndex = 0;
+        CurrentSong = null;
+        PausePlayback(0);
         await Clients.All.SendAsync("ClearQueue");
     }
 
