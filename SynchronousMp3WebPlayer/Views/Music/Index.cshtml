@@ -374,6 +374,10 @@
                         <span class="text-truncate fs-6 text-center"
                               style="width: 20%">${song.author}</span>
                     </button>
+                    <button class="ms-2 btn btn-outline-light removeFromQueueBtn" style="height: 50px; width: 50px"
+                            data-queueIndex="${song.queueIndex}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </div>`;
             queueDiv.appendChild(songElement);
 
@@ -420,6 +424,10 @@
                         <span class="text-truncate fs-6 text-center"
                               style="width: 20%">${song.author}</span>
                     </button>
+                    <button class="ms-2 btn btn-outline-light removeFromQueueBtn" style="height: 50px; width: 50px"
+                            data-queueIndex="${song.queueIndex}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </div>`;
 
             let queueSongBtn = songElement.querySelector(".queueSongBtn");
@@ -436,6 +444,7 @@
                 let queueSong = nextSongs[i];
                 queueSong.id = `song_${i + currentSongIndex + 2}`;
                 queueSong.querySelector(`.queueSongBtn`).setAttribute("data-queueIndex", i + currentSongIndex + 2);
+                queueSong.querySelector(`.removeFromQueueBtn`).setAttribute("data-queueIndex", i + currentSongIndex + 2);
             }
             queueDiv.querySelector(`#song_${currentSongIndex}`).insertAdjacentElement('afterend', songElement);
         }
@@ -459,6 +468,28 @@
             } else {
                 connection.invoke("AddNextInQueue", song);
             }
+        });
+
+        $(document).on("click", ".removeFromQueueBtn", function () {
+            let queueIndex = $(this).attr("data-queueIndex");
+            connection.invoke("RemoveFromQueue", queueIndex);
+        });
+
+        connection.on("RemoveFromQueue", function (removedQueueIndex, newCurrentSongIndex) {
+            let removedSong = queueDiv.querySelector(`#song_${removedQueueIndex}`);
+            if (removedSong) {
+                removedSong.remove();
+            }
+
+            queueCount--;
+            currentSongIndex = newCurrentSongIndex;
+
+            let queueSongs = Array.from(queueDiv.children);
+            queueSongs.forEach((songElement, index) => {
+                songElement.id = `song_${index}`;
+                songElement.querySelector(".queueSongBtn").setAttribute("data-queueIndex", index);
+                songElement.querySelector(".removeFromQueueBtn").setAttribute("data-queueIndex", index);
+            });
         });
 
         connection.on("ClearQueue", function () {

@@ -248,6 +248,50 @@ public class MusicHub : Hub
         }
     }
 
+    public async Task RemoveFromQueue(string queueIndex)
+    {
+        var index = int.TryParse(queueIndex, out var queueIndexInt) ? queueIndexInt : -1;
+        if (index < 0 || index >= SongQueue.Count)
+        {
+            return;
+        }
+
+        var removedCurrentSong = CurrentSong is not null && CurrentSong.QueueIndex == index;
+        SongQueue.RemoveAt(index);
+        ReindexQueue();
+
+        if (SongQueue.Count == 0)
+        {
+            CurrentSong = null;
+            CurrentSongIndex = 0;
+            await Clients.All.SendAsync("ClearQueue");
+            return;
+        }
+
+        if (removedCurrentSong)
+        {
+            CurrentSongIndex = Math.Min(index, SongQueue.Count - 1);
+            await Clients.All.SendAsync("RemoveFromQueue", index, CurrentSongIndex);
+            await ChangeSongByQueueIndex(CurrentSongIndex.ToString());
+            return;
+        }
+
+        if (index < CurrentSongIndex)
+        {
+            CurrentSongIndex--;
+        }
+
+        await Clients.All.SendAsync("RemoveFromQueue", index, CurrentSongIndex);
+    }
+
+    private static void ReindexQueue()
+    {
+        for (var i = 0; i < SongQueue.Count; i++)
+        {
+            SongQueue[i].QueueIndex = i;
+        }
+    }
+
     public async Task ClearQueue()
     {
         SongQueue.Clear();

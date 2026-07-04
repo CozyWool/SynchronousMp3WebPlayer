@@ -489,8 +489,8 @@ body.dark-theme {
 
     #songCover {
         grid-column: 1 / -1;
-        width: 150px;
-        height: 155px;
+        width: 200px;
+        height: 200px;
         justify-self: center;
         align-self: center;
         object-fit: cover;
@@ -789,8 +789,8 @@ body.dark-theme {
     }
 
     #songCover {
-        width: 150px;
-        height: 155px;
+        width: 200px;
+        height: 200px;
     }
 
     #songInfo {
